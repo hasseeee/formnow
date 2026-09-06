@@ -1,6 +1,24 @@
-// プレースホルダー: バックエンド実装で置き換える
-export default {
-  async fetch(): Promise<Response> {
-    return new Response('FormNow API not implemented yet', { status: 501 });
-  },
-} satisfies ExportedHandler;
+import { Hono } from 'hono';
+import type { Env } from './env';
+import { publicRoutes } from './routes/public';
+import { adminRoutes } from './routes/admin';
+import { handleMcp } from './routes/mcp';
+import type { ApiError } from '../shared/types';
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.route('/api/forms', publicRoutes);
+app.route('/api/admin', adminRoutes);
+
+// MCP (Streamable HTTP) — wave2で実装。現状はプレースホルダー。
+app.all('/mcp', handleMcp);
+app.all('/mcp/*', handleMcp);
+
+app.notFound((c) => c.json<ApiError>({ error: 'not found' }, 404));
+
+app.onError((err, c) => {
+  console.error(err);
+  return c.json<ApiError>({ error: 'internal server error' }, 500);
+});
+
+export default app;

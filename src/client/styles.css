@@ -1,0 +1,949 @@
+/* FormNow — クライアント用スタイルシート
+   フレームワークなし。モバイルファースト、カード型レイアウト、アクセントカラー1色。 */
+
+:root {
+  --accent: #4f46e5;
+  --accent-dark: #4338ca;
+  --accent-soft: #eef0fe;
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #1f2430;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --danger: #dc2626;
+  --danger-soft: #fdecec;
+  --success: #16a34a;
+  --success-soft: #eafaf0;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.06);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans JP', Meiryo, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.35;
+  margin: 0 0 0.5em;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+}
+
+h3 {
+  font-size: 1rem;
+}
+
+p {
+  margin: 0 0 0.75em;
+}
+
+a {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- レイアウト ---------- */
+
+.page-container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.centered-message {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.centered-message.tone-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- ボタン ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.btn-secondary {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e3e6fd;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: #f0f1f5;
+}
+
+.btn-danger-ghost {
+  background: transparent;
+  color: var(--danger);
+  border-color: transparent;
+  padding: 8px 12px;
+}
+
+.btn-danger-ghost:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 4px 0;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+/* ---------- フォーム部品 ---------- */
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.text-input,
+.select-input,
+.textarea-input {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.text-input:focus,
+.select-input:focus,
+.textarea-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.textarea-input {
+  resize: vertical;
+  min-height: 5em;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.inline-form .text-input,
+.inline-form .select-input {
+  flex: 1 1 160px;
+  margin-bottom: 0;
+}
+
+.inline-form .btn {
+  flex: 0 0 auto;
+}
+
+.inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 16px;
+}
+
+.inline-field .text-input {
+  width: 90px;
+  margin-bottom: 0;
+}
+
+.checkbox-field {
+  align-items: center;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.field-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: -6px 0 12px;
+}
+
+.form-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.82rem;
+  margin: 4px 0 0;
+}
+
+.has-error .text-input,
+.has-error .select-input,
+.has-error .textarea-input {
+  border-color: var(--danger);
+}
+
+/* ---------- Markdown 描画 ---------- */
+
+.markdown-body {
+  font-size: 0.98rem;
+}
+
+.markdown-body :first-child {
+  margin-top: 0;
+}
+
+.markdown-body :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body pre {
+  background: #f4f4f8;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.markdown-body code {
+  background: #f4f4f8;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.4em;
+}
+
+/* ---------- トースト ---------- */
+
+.toast-container {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+  text-align: center;
+  color: #fff;
+  background: var(--text);
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast-success {
+  background: var(--success);
+}
+
+.toast-error {
+  background: var(--danger);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- ランディング ---------- */
+
+.landing {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.landing-hero {
+  text-align: center;
+  padding: 40px 28px;
+}
+
+.landing-eyebrow {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.landing-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+  margin-bottom: 12px;
+}
+
+.landing-description {
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.landing-cta {
+  padding: 12px 28px;
+}
+
+/* ---------- 回答フロー ---------- */
+
+.form-flow {
+  padding-top: 24px;
+}
+
+.form-header h1 {
+  margin-bottom: 8px;
+}
+
+.switch-name-link {
+  padding: 0;
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+.name-select-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.eval-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.eval-progress {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.eval-team-name {
+  font-size: 1.6rem;
+  margin-bottom: 20px;
+}
+
+.eval-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.question-field {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.question-field:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.question-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.required-badge {
+  flex-shrink: 0;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.rating-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rating-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rating-btn:hover {
+  border-color: var(--accent);
+}
+
+.rating-btn.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.rating-slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rating-slider input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.rating-slider-value {
+  min-width: 90px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.choice-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.choice-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.choice-option input {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.eval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.completion-card {
+  text-align: center;
+}
+
+.completion-emoji {
+  font-size: 2.4rem;
+  margin: 0;
+}
+
+.completion-team-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- 管理画面 ---------- */
+
+.admin-shell {
+  min-height: 100vh;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.admin-brand {
+  font-weight: 800;
+  color: var(--accent-dark);
+  text-decoration: none;
+  font-size: 1.05rem;
+}
+
+.admin-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.token-form {
+  max-width: 380px;
+  margin: 60px auto 0;
+  text-align: center;
+}
+
+.token-form h1 {
+  font-size: 1.3rem;
+}
+
+.event-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-list-item {
+  margin-bottom: 0;
+  padding: 16px 20px;
+}
+
+.event-list-item a {
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 1.05rem;
+}
+
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.tab-button.active {
+  color: var(--accent-dark);
+  border-bottom-color: var(--accent);
+}
+
+.editable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editable-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.editable-row .text-input,
+.editable-row .select-input {
+  margin-bottom: 0;
+}
+
+.editable-row > .text-input:first-child {
+  flex: 1 1 auto;
+}
+
+.respondent-row {
+  flex-wrap: wrap;
+}
+
+.respondent-row .text-input {
+  flex: 1 1 140px;
+}
+
+.respondent-row .select-input {
+  flex: 1 1 130px;
+}
+
+.formula-row .formula-expression {
+  flex: 2 1 auto;
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.editable-list-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.hint-text {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.forms-tab .form-create {
+  align-items: center;
+}
+
+.form-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.form-list-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.form-list-title {
+  font-weight: 700;
+}
+
+.form-list-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.status-draft {
+  background: #f1f1f5;
+  color: var(--text-muted);
+}
+
+.status-open {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.status-closed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.question-builder {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.question-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.question-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.question-editor-row .select-input {
+  width: auto;
+  min-width: 160px;
+  margin-bottom: 0;
+}
+
+.question-editor-meta {
+  margin-top: 4px;
+}
+
+.option-editor {
+  margin: 6px 0 10px;
+  padding: 12px;
+  background: #fafafe;
+  border-radius: var(--radius-sm);
+}
+
+.option-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.option-row .text-input {
+  margin-bottom: 0;
+}
+
+.option-score {
+  max-width: 120px;
+}
+
+.form-meta-editor label:first-of-type {
+  margin-top: 0;
+}
+
+.markdown-editor {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.markdown-preview {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  background: #fafafe;
+}
+
+.results-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 480px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table thead th {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.response-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.response-item {
+  padding: 16px;
+}
+
+.response-meta {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.response-answers {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.cross-summary {
+  margin-top: 32px;
+}
+
+.formula-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formula-result-card {
+  margin-bottom: 0;
+}
+
+.formula-expression-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+/* ---------- レスポンシブ（タブレット以上） ---------- */
+
+@media (min-width: 640px) {
+  .page-container {
+    padding-top: 40px;
+  }
+
+  .admin-main {
+    padding-top: 32px;
+  }
+
+  .markdown-editor {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .eval-actions {
+    justify-content: space-between;
+  }
+}
