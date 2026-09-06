@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateTeamSummaries, computeRanks, type AggregateResponseInput } from '../src/worker/logic/aggregate';
+import {
+  aggregateTeamSummaries,
+  computeRanks,
+  sortByRank,
+  type AggregateResponseInput,
+} from '../src/worker/logic/aggregate';
 import type { Question, Team } from '../src/shared/types';
 
 function makeQuestion(overrides: Partial<Question>): Question {
@@ -141,5 +146,44 @@ describe('aggregateTeamSummaries', () => {
     const summaries = aggregateTeamSummaries([], questions, teams);
     const teamA = summaries.find((s) => s.teamId === 1)!;
     expect(teamA.questionAvgs).toEqual({});
+  });
+
+  it('返り値はrank昇順にソートされる (rank=nullは末尾)', () => {
+    const responses: AggregateResponseInput[] = [
+      { teamId: 1, answers: [{ questionId: 1, value: 3 }] },
+      { teamId: 2, answers: [{ questionId: 1, value: 5 }] },
+      // teamId 3 は回答無し (avg=null, rank=null)
+    ];
+    const summaries = aggregateTeamSummaries(responses, questions, teams);
+    expect(summaries.map((s) => s.teamId)).toEqual([2, 1, 3]);
+    expect(summaries.map((s) => s.rank)).toEqual([1, 2, null]);
+  });
+});
+
+describe('sortByRank', () => {
+  it('rank昇順に並べ替える', () => {
+    const items = [
+      { id: 'a', rank: 3 },
+      { id: 'b', rank: 1 },
+      { id: 'c', rank: 2 },
+    ];
+    expect(sortByRank(items).map((i) => i.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('rank=nullは末尾に配置される', () => {
+    const items = [
+      { id: 'a', rank: null },
+      { id: 'b', rank: 1 },
+    ];
+    expect(sortByRank(items).map((i) => i.id)).toEqual(['b', 'a']);
+  });
+
+  it('rank=null同士は元の並び順 (sort_order順) を維持する', () => {
+    const items = [
+      { id: 'a', rank: null },
+      { id: 'b', rank: null },
+      { id: 'c', rank: 1 },
+    ];
+    expect(sortByRank(items).map((i) => i.id)).toEqual(['c', 'a', 'b']);
   });
 });

@@ -12,6 +12,7 @@ import {
 } from '../../api';
 import Markdown from '../../components/Markdown';
 import { useToast } from '../../components/Toast';
+import { formatScore } from '../../lib/format';
 
 function stripMarkdown(source: string): string {
   return source.replace(/[#*_`>[\]()~-]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -65,13 +66,11 @@ export default function FormResultsPage() {
     setSyncMessage(null);
     try {
       const result = await syncSheets(formId);
-      setSyncMessage(result.message ?? 'シートへの同期が完了しました。');
+      setSyncMessage(
+        result.rows !== undefined ? `${result.rows}件を同期しました` : 'シートへの同期が完了しました。',
+      );
     } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 501) {
-        setSyncMessage('Sheets連携が未設定です。');
-      } else {
-        setSyncMessage(err instanceof ApiRequestError ? err.message : '同期に失敗しました。');
-      }
+      setSyncMessage(err instanceof ApiRequestError ? err.message : '同期に失敗しました。');
     } finally {
       setSyncing(false);
     }
@@ -80,8 +79,11 @@ export default function FormResultsPage() {
   if (error) return <p className="form-error">{error}</p>;
   if (!summary || !responses) return <p className="muted">読み込み中…</p>;
 
-  const questionIds =
-    summary.teams.length > 0 ? Object.keys(summary.teams[0].questionAvgs).map(Number) : [];
+  const SCORABLE_TYPES = new Set(['rating', 'number', 'choice', 'checkbox']);
+  const questionIds = [...questions]
+    .filter((q) => SCORABLE_TYPES.has(q.type))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((q) => q.id);
 
   return (
     <div className="admin-page">
@@ -118,11 +120,11 @@ export default function FormResultsPage() {
                   <td>{t.rank ?? '-'}</td>
                   <td>{t.teamName}</td>
                   <td>{t.count}</td>
-                  <td>{t.avg !== null ? t.avg.toFixed(2) : '-'}</td>
-                  <td>{t.sum}</td>
+                  <td>{formatScore(t.avg)}</td>
+                  <td>{formatScore(t.sum)}</td>
                   {questionIds.map((qid) => (
                     <td key={qid}>
-                      {t.questionAvgs[qid] !== undefined ? t.questionAvgs[qid].toFixed(2) : '-'}
+                      {formatScore(t.questionAvgs[qid] ?? null)}
                     </td>
                   ))}
                 </tr>
@@ -135,7 +137,7 @@ export default function FormResultsPage() {
             </tbody>
           </table>
         </div>
-        <p className="muted">満点目安: {summary.maxPossibleScore}</p>
+        <p className="muted">満点目安: {formatScore(summary.maxPossibleScore)}</p>
       </section>
 
       <section>

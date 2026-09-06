@@ -60,6 +60,18 @@ describe('formula.evaluate', () => {
     expect(evaluate('  1   +   2  ', {})).toBe(3);
   });
 
+  it('ハイフン付き変数名と減算が混在する場合、既知変数名の最長一致を優先する', () => {
+    const vars = { judge_avg: 70, peer_avg: 30 };
+    expect(evaluate('judge_avg-peer_avg', vars)).toBe(40);
+    expect(evaluate('judge_avg - peer_avg', vars)).toBe(40);
+  });
+
+  it('スラッグ自体にハイフンを含む変数名と減算が混在する場合も解決できる', () => {
+    const vars = { 'lt-judge_avg': 80, 'lt-peer_avg': 50 };
+    // 「既知変数名の最長一致」により lt-judge_avg / lt-peer_avg がそれぞれ1トークンとして解決される
+    expect(evaluate('lt-judge_avg-lt-peer_avg', vars)).toBe(30);
+  });
+
   it('未知の変数はエラーになる', () => {
     expect(() => evaluate('unknown_var', {})).toThrow(/不明な変数/);
   });

@@ -37,7 +37,10 @@ function safe<Args extends unknown[]>(
 const questionTypeSchema = z.enum(['rating', 'number', 'choice', 'checkbox', 'text', 'textarea']);
 const roleSchema = z.enum(['judge', 'member']);
 const formKindSchema = z.enum(['judge', 'peer']);
-const optionSchema = z.object({ label: z.string().min(1), score: z.number().optional() });
+const optionSchema = z.object({
+  label: z.string().min(1).max(200),
+  score: z.number().finite().optional(),
+});
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 export function registerTools(server: McpServer, env: Env): void {
@@ -76,23 +79,24 @@ export function registerTools(server: McpServer, env: Env): void {
   server.registerTool(
     'set_teams',
     {
-      description: 'イベントのチーム一覧を設定する (既存と同じupsert方式。idを指定した項目は更新、指定しない項目は追加、渡さなかった既存チームは削除される)',
+      description:
+        'イベントのチーム一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存チームがあれば更新、無ければ追加する。既存項目は削除されません。',
       inputSchema: {
         eventId: z.number().int(),
         teams: z.array(
           z.object({
             id: z.number().int().optional(),
-            name: z.string().min(1),
+            name: z.string().min(1).max(200),
             sortOrder: z.number().int().optional(),
           })
-        ),
+        ).max(500),
       },
     },
     safe(async ({ eventId, teams }) => {
       const event = await db.getEvent(database, eventId);
       if (!event) throw new Error('イベントが見つかりません');
       const items = teams.map((t, i) => ({ id: t.id, name: t.name, sortOrder: t.sortOrder ?? i }));
-      return jsonResult(await db.upsertTeams(database, eventId, items));
+      return jsonResult(await db.mergeTeams(database, eventId, items));
     })
   );
 
@@ -100,18 +104,18 @@ export function registerTools(server: McpServer, env: Env): void {
     'set_respondents',
     {
       description:
-        'イベントの回答者一覧を設定する (既存と同じupsert方式)。teamNameで所属チームを名前解決できる (見つからなければエラー)',
+        'イベントの回答者一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存回答者があれば更新、無ければ追加する。既存項目は削除されません。teamNameで所属チームを名前解決できる (見つからなければエラー)',
       inputSchema: {
         eventId: z.number().int(),
         respondents: z.array(
           z.object({
             id: z.number().int().optional(),
-            name: z.string().min(1),
+            name: z.string().min(1).max(200),
             role: roleSchema,
-            teamName: z.string().optional().describe('所属チーム名 (memberの場合に指定。judgeは不要)'),
+            teamName: z.string().max(200).optional().describe('所属チーム名 (memberの場合に指定。judgeは不要)'),
             sortOrder: z.number().int().optional(),
           })
-        ),
+        ).max(1000),
       },
     },
     safe(async ({ eventId, respondents }) => {
@@ -129,7 +133,7 @@ export function registerTools(server: McpServer, env: Env): void {
         }
         return { id: r.id, name: r.name, role: r.role, teamId, sortOrder: r.sortOrder ?? i };
       });
-      return jsonResult(await db.upsertRespondents(database, eventId, items));
+      return jsonResult(await db.mergeRespondents(database, eventId, items));
     })
   );
 
@@ -172,8 +176,8 @@ export function registerTools(server: McpServer, env: Env): void {
       inputSchema: {
         eventId: z.number().int(),
         slug: z.string().regex(SLUG_RE, 'slugは半角英数字とハイフンのみ使用できます'),
-        title: z.string().min(1),
-        descriptionMd: z.string().optional(),
+        title: z.string().min(1).max(200),
+        descriptionMd: z.string().max(10000).optional(),
         kind: formKindSchema,
       },
     },
@@ -193,9 +197,9 @@ export function registerTools(server: McpServer, env: Env): void {
       description: 'フォームのタイトル・説明・シートIDを更新する',
       inputSchema: {
         formId: z.number().int(),
-        title: z.string().min(1).optional(),
-        descriptionMd: z.string().optional(),
-        sheetId: z.string().nullable().optional(),
+        title: z.string().min(1).max(200).optional(),
+        descriptionMd: z.string().max(10000).optional(),
+        sheetId: z.string().max(200).nullable().optional(),
       },
     },
     safe(async ({ formId, title, descriptionMd, sheetId }) => {
@@ -209,7 +213,8 @@ export function registerTools(server: McpServer, env: Env): void {
   server.registerTool(
     'set_questions',
     {
-      description: 'フォームの質問一覧を全置換する (idを指定しなければ既存の全質問を削除して新規挿入する)',
+      description:
+        'フォームの質問一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目はlabelMdが完全一致する既存質問があれば更新、無ければ追加する。既存項目は削除されません。',
       inputSchema: {
         formId: z.number().int(),
         questions: z.array(
@@ -217,13 +222,13 @@ export function registerTools(server: McpServer, env: Env): void {
             id: z.number().int().optional(),
             sortOrder: z.number().int().optional(),
             type: questionTypeSchema,
-            labelMd: z.string().min(1),
-            options: z.array(optionSchema).nullable().optional(),
-            maxScore: z.number().nullable().optional(),
-            weight: z.number().optional(),
+            labelMd: z.string().min(1).max(10000),
+            options: z.array(optionSchema).max(50).nullable().optional(),
+            maxScore: z.number().finite().nullable().optional(),
+            weight: z.number().finite().min(0).optional(),
             required: z.boolean().optional(),
           })
-        ),
+        ).max(200),
       },
     },
     safe(async ({ formId, questions }) => {
@@ -237,9 +242,9 @@ export function registerTools(server: McpServer, env: Env): void {
         options: q.options ?? null,
         maxScore: q.maxScore ?? null,
         weight: q.weight ?? 1,
-        required: q.required ?? false,
+        required: q.required ?? true,
       }));
-      return jsonResult(await db.upsertQuestions(database, formId, items));
+      return jsonResult(await db.mergeQuestions(database, formId, items));
     })
   );
 
@@ -253,7 +258,8 @@ export function registerTools(server: McpServer, env: Env): void {
       const existing = await db.getFormById(database, formId);
       if (!existing) throw new Error('フォームが見つかりません');
       const form = await db.updateForm(database, formId, { status: 'open' });
-      return jsonResult({ form, url: `/f/${form!.slug}` });
+      if (!form) throw new Error('フォームの更新に失敗しました');
+      return jsonResult({ form, url: `/f/${form.slug}` });
     })
   );
 
@@ -307,25 +313,27 @@ export function registerTools(server: McpServer, env: Env): void {
   server.registerTool(
     'set_formulas',
     {
-      description: 'イベントの自由計算式一覧を設定する (既存と同じupsert方式)',
+      description:
+        'イベントの自由計算式一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存計算式があれば更新、無ければ追加する。既存項目は削除されません。',
       inputSchema: {
         eventId: z.number().int(),
         formulas: z.array(
           z.object({
             id: z.number().int().optional(),
-            name: z.string().min(1),
+            name: z.string().min(1).max(200),
             expression: z
               .string()
               .min(1)
+              .max(500)
               .describe('例: judge_avg * 0.7 + peer_avg * 0.3 (変数は <form_slug>_avg / _sum / _count)'),
           })
-        ),
+        ).max(100),
       },
     },
     safe(async ({ eventId, formulas }) => {
       const event = await db.getEvent(database, eventId);
       if (!event) throw new Error('イベントが見つかりません');
-      return jsonResult(await db.upsertFormulas(database, eventId, formulas));
+      return jsonResult(await db.mergeFormulas(database, eventId, formulas));
     })
   );
 

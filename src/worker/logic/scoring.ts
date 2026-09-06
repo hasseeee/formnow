@@ -1,16 +1,32 @@
 // 純粋関数: 回答1件のスコア計算。D1に依存しない。
 import type { AnswerValue, Question } from '../../shared/types';
 
-/** 採点対象になりうる質問タイプ (text/textarea は対象外) */
-function isScorableType(type: Question['type']): boolean {
-  return type === 'rating' || type === 'number' || type === 'choice' || type === 'checkbox';
+/**
+ * 採点対象になりうる質問かどうかを判定する。
+ * - rating/number: 常に採点対象
+ * - choice/checkbox: score を持つ選択肢が1つ以上ある場合のみ採点対象
+ * - text/textarea: 常に対象外
+ */
+export function isScorable(question: Question): boolean {
+  switch (question.type) {
+    case 'rating':
+    case 'number':
+      return true;
+    case 'choice':
+    case 'checkbox':
+      return (question.options ?? []).some((o) => o.score !== undefined);
+    case 'text':
+    case 'textarea':
+    default:
+      return false;
+  }
 }
 
 /**
  * 回答値を数値化する。
  * - rating/number: 値そのもの (数値化できなければ null)
- * - choice: options 内で label が一致する選択肢の score (無ければ0)
- * - checkbox: 選択した各 label に対応する選択肢の score の合計 (一致なしは0扱い)
+ * - choice: options 内で label が一致する選択肢の score (一致する選択肢が無ければ null = 採点除外)
+ * - checkbox: 選択した各 label に対応する選択肢の score の合計 (一致しないlabelは無視)
  * - text/textarea: 採点対象外 (null)
  */
 export function numericValue(question: Question, value: AnswerValue): number | null {
@@ -23,7 +39,7 @@ export function numericValue(question: Question, value: AnswerValue): number | n
     case 'choice': {
       if (typeof value !== 'string') return null;
       const opt = (question.options ?? []).find((o) => o.label === value);
-      return opt ? (opt.score ?? 0) : 0;
+      return opt ? (opt.score ?? 0) : null;
     }
     case 'checkbox': {
       if (!Array.isArray(value)) return null;
@@ -67,7 +83,7 @@ export function responseScore(
 export function maxPossibleScore(questions: Question[]): number {
   let total = 0;
   for (const question of questions) {
-    if (!isScorableType(question.type)) continue;
+    if (!isScorable(question)) continue;
     switch (question.type) {
       case 'rating':
       case 'number':

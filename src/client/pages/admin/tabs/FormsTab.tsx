@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { Form, FormKind, FormStatus } from '../../../../shared/types';
-import { ApiRequestError, createForm, updateForm } from '../../../api';
+import { ApiRequestError, createForm, deleteForm, updateForm } from '../../../api';
 import { useToast } from '../../../components/Toast';
 
 interface Props {
@@ -16,6 +16,8 @@ const STATUS_LABEL: Record<FormStatus, string> = {
   closed: '締切',
 };
 
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
+
 export default function FormsTab({ eventId, forms, onSaved }: Props) {
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
@@ -27,10 +29,15 @@ export default function FormsTab({ eventId, forms, onSaved }: Props) {
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
     if (!slug.trim() || !title.trim()) return;
+    const trimmedSlug = slug.trim();
+    if (!SLUG_PATTERN.test(trimmedSlug)) {
+      setError('スラッグは半角英小文字・数字・ハイフンのみ使用できます。');
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
-      await createForm({ eventId, slug: slug.trim(), title: title.trim(), descriptionMd: '', kind });
+      await createForm({ eventId, slug: trimmedSlug, title: title.trim(), descriptionMd: '', kind });
       setSlug('');
       setTitle('');
       toast.show('フォームを作成しました');
@@ -60,6 +67,20 @@ export default function FormsTab({ eventId, forms, onSaved }: Props) {
       onSaved();
     } catch (err) {
       toast.show(err instanceof ApiRequestError ? err.message : '更新に失敗しました。', 'error');
+    }
+  };
+
+  const handleDelete = async (form: Form) => {
+    const ok = window.confirm(
+      `「${form.title}」を削除しますか？回答データもすべて削除されます。`,
+    );
+    if (!ok) return;
+    try {
+      await deleteForm(form.id);
+      toast.show('フォームを削除しました');
+      onSaved();
+    } catch (err) {
+      toast.show(err instanceof ApiRequestError ? err.message : '削除に失敗しました。', 'error');
     }
   };
 
@@ -130,6 +151,13 @@ export default function FormsTab({ eventId, forms, onSaved }: Props) {
               <Link to={`/admin/forms/${f.id}/results`} className="btn btn-secondary">
                 結果
               </Link>
+              <button
+                type="button"
+                className="btn btn-danger-ghost"
+                onClick={() => handleDelete(f)}
+              >
+                削除
+              </button>
             </div>
           </li>
         ))}

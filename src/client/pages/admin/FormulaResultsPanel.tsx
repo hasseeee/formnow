@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { FormulaResults } from '../../../shared/types';
 import { ApiRequestError, getFormulaResults } from '../../api';
+import { formatScore } from '../../lib/format';
 
 interface Props {
   eventId: number;
+  refreshKey?: number;
 }
 
-export default function FormulaResultsPanel({ eventId }: Props) {
+export default function FormulaResultsPanel({ eventId, refreshKey }: Props) {
   const [data, setData] = useState<FormulaResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +20,7 @@ export default function FormulaResultsPanel({ eventId }: Props) {
       .catch((err: unknown) =>
         setError(err instanceof ApiRequestError ? err.message : '読み込みに失敗しました。'),
       );
-  }, [eventId]);
+  }, [eventId, refreshKey]);
 
   if (error) return <p className="form-error">{error}</p>;
   if (!data) return <p className="muted">読み込み中…</p>;
@@ -48,7 +50,7 @@ export default function FormulaResultsPanel({ eventId }: Props) {
                     <tr key={r.teamId}>
                       <td>{r.rank ?? '-'}</td>
                       <td>{r.teamName}</td>
-                      <td>{r.value ?? '-'}</td>
+                      <td>{formatScore(r.value)}</td>
                     </tr>
                   ))}
                 </tbody>

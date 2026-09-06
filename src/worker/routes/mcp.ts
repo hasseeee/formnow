@@ -6,11 +6,12 @@ import { StreamableHTTPTransport } from '@hono/mcp';
 import type { Env } from '../env';
 import type { ApiError } from '../../shared/types';
 import { registerTools } from '../mcp/tools';
+import { timingSafeEqual } from '../logic/security';
 
 export async function handleMcp(c: Context<{ Bindings: Env }>): Promise<Response> {
   const auth = c.req.header('Authorization') ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : '';
-  if (!token || token !== c.env.MCP_TOKEN) {
+  if (!token || !timingSafeEqual(token, c.env.MCP_TOKEN)) {
     return c.json<ApiError>({ error: 'unauthorized' }, 401);
   }
 

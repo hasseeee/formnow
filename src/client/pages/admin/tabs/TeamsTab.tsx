@@ -32,6 +32,13 @@ export default function TeamsTab({ eventId, teams, onSaved }: Props) {
   };
 
   const removeRow = (index: number) => {
+    const target = rows[index];
+    if (target?.id !== undefined) {
+      const ok = window.confirm(
+        'このチームを削除すると、このチームへの回答もすべて削除されます。よろしいですか？',
+      );
+      if (!ok) return;
+    }
     setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -46,8 +53,13 @@ export default function TeamsTab({ eventId, teams, onSaved }: Props) {
   };
 
   const handleSave = async () => {
-    setSaving(true);
     setError(null);
+    const hasEmptyExisting = rows.some((r) => r.id !== undefined && r.name.trim() === '');
+    if (hasEmptyExisting) {
+      setError('名前が空の行があります');
+      return;
+    }
+    setSaving(true);
     try {
       const payload = rows
         .filter((r) => r.name.trim() !== '')
@@ -106,6 +118,7 @@ export default function TeamsTab({ eventId, teams, onSaved }: Props) {
           {saving ? '保存中…' : '保存'}
         </button>
       </div>
+      <p className="small-hint">一覧から削除した項目は保存時にデータベースからも削除されます</p>
     </div>
   );
 }

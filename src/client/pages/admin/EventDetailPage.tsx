@@ -23,6 +23,7 @@ export default function EventDetailPage() {
   const [data, setData] = useState<EventDetailView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('teams');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const reload = useCallback(() => {
     setError(null);
@@ -32,6 +33,11 @@ export default function EventDetailPage() {
         setError(err instanceof ApiRequestError ? err.message : '読み込みに失敗しました。'),
       );
   }, [eventId]);
+
+  const handleSaved = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    reload();
+  }, [reload]);
 
   useEffect(reload, [reload]);
 
@@ -56,24 +62,24 @@ export default function EventDetailPage() {
       </nav>
 
       <div className="tab-panel">
-        {tab === 'teams' && <TeamsTab eventId={eventId} teams={data.teams} onSaved={reload} />}
+        {tab === 'teams' && <TeamsTab eventId={eventId} teams={data.teams} onSaved={handleSaved} />}
         {tab === 'respondents' && (
           <RespondentsTab
             eventId={eventId}
             respondents={data.respondents}
             teams={data.teams}
-            onSaved={reload}
+            onSaved={handleSaved}
           />
         )}
         {tab === 'forms' && <FormsTab eventId={eventId} forms={data.forms} onSaved={reload} />}
         {tab === 'formulas' && (
-          <FormulasTab eventId={eventId} formulas={data.formulas} onSaved={reload} />
+          <FormulasTab eventId={eventId} formulas={data.formulas} onSaved={handleSaved} />
         )}
       </div>
 
       <section className="cross-summary">
         <h2>横断集計</h2>
-        <FormulaResultsPanel eventId={eventId} />
+        <FormulaResultsPanel eventId={eventId} refreshKey={refreshKey} />
       </section>
     </div>
   );

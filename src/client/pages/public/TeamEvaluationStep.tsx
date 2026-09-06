@@ -41,14 +41,25 @@ export default function TeamEvaluationStep({
   const validate = (): boolean => {
     const nextErrors: Record<number, string> = {};
     for (const q of questions) {
-      if (!q.required) continue;
       const v = answers[q.id];
-      if (v === null || v === undefined) {
-        nextErrors[q.id] = '必須項目です';
-      } else if (typeof v === 'string' && v.trim() === '') {
-        nextErrors[q.id] = '必須項目です';
-      } else if (Array.isArray(v) && v.length === 0) {
-        nextErrors[q.id] = '必須項目です';
+      if (q.required) {
+        if (v === null || v === undefined) {
+          nextErrors[q.id] = '必須項目です';
+          continue;
+        } else if (typeof v === 'string' && v.trim() === '') {
+          nextErrors[q.id] = '必須項目です';
+          continue;
+        } else if (Array.isArray(v) && v.length === 0) {
+          nextErrors[q.id] = '必須項目です';
+          continue;
+        }
+      }
+      if (q.type === 'number' && typeof v === 'number') {
+        const max = q.maxScore;
+        if (v < 0 || (max !== null && v > max)) {
+          nextErrors[q.id] =
+            max !== null ? `0〜${max}点で入力してください` : '0以上の値を入力してください';
+        }
       }
     }
     setErrors(nextErrors);

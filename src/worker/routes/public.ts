@@ -8,17 +8,23 @@ import type { ApiError, MyResponsesView, PublicFormView, Role } from '../../shar
 
 export const publicRoutes = new Hono<{ Bindings: Env }>();
 
-const answerValueSchema = z.union([z.number(), z.string(), z.array(z.string())]);
+const answerValueSchema = z.union([
+  z.number().finite(),
+  z.string().max(10000),
+  z.array(z.string().max(10000)).max(100),
+]);
 
 const submitSchema = z.object({
   respondentId: z.number().int(),
   teamId: z.number().int(),
-  answers: z.array(
-    z.object({
-      questionId: z.number().int(),
-      value: answerValueSchema,
-    })
-  ),
+  answers: z
+    .array(
+      z.object({
+        questionId: z.number().int(),
+        value: answerValueSchema,
+      })
+    )
+    .max(200),
 });
 
 /** GET /api/forms/:slug */
@@ -95,12 +101,29 @@ publicRoutes.post('/:slug/responses', async (c) => {
     return c.json<ApiError>({ error: 'team not found' }, 400);
   }
 
+  // answers配列内のquestionId重複を拒否する
+  const seenQuestionIds = new Set<number>();
+  for (const a of body.answers) {
+    if (seenQuestionIds.has(a.questionId)) {
+      return c.json<ApiError>({ error: `duplicate answer for question ${a.questionId}` }, 400);
+    }
+    seenQuestionIds.add(a.questionId);
+  }
+
   const questions = await db.listQuestions(c.env.DB, form.id);
   const questionMap = new Map(questions.map((q) => [q.id, q]));
   const answerMap = new Map(body.answers.map((a) => [a.questionId, a.value]));
 
+  /** 空文字・空配列も「未回答」として扱う */
+  function isBlankAnswer(value: unknown): boolean {
+    if (value === undefined) return true;
+    if (typeof value === 'string') return value.trim().length === 0;
+    if (Array.isArray(value)) return value.length === 0;
+    return false;
+  }
+
   for (const q of questions) {
-    if (q.required && !answerMap.has(q.id)) {
+    if (q.required && isBlankAnswer(answerMap.get(q.id))) {
       return c.json<ApiError>({ error: `question ${q.id} is required` }, 400);
     }
   }
@@ -124,9 +147,21 @@ publicRoutes.post('/:slug/responses', async (c) => {
       if (typeof a.value !== 'string') {
         return c.json<ApiError>({ error: `question ${q.id} requires a string value` }, 400);
       }
+      if (a.value !== '') {
+        const labels = new Set((q.options ?? []).map((o) => o.label));
+        if (!labels.has(a.value)) {
+          return c.json<ApiError>({ error: `question ${q.id} has an invalid option value` }, 400);
+        }
+      }
     } else if (q.type === 'checkbox') {
       if (!Array.isArray(a.value)) {
         return c.json<ApiError>({ error: `question ${q.id} requires an array value` }, 400);
+      }
+      const labels = new Set((q.options ?? []).map((o) => o.label));
+      for (const v of a.value) {
+        if (!labels.has(v)) {
+          return c.json<ApiError>({ error: `question ${q.id} has an invalid option value` }, 400);
+        }
       }
     } else {
       if (typeof a.value !== 'string') {
@@ -137,11 +172,12 @@ publicRoutes.post('/:slug/responses', async (c) => {
 
   const responseId = await db.upsertResponse(c.env.DB, form.id, body.respondentId, body.teamId, body.answers);
 
-  try {
-    await appendResponseToSheet(c.env, form.id, responseId);
-  } catch {
-    // best-effort: シート追記の失敗は回答受付をブロックしない
-  }
+  // シートへの追記は応答をブロックしないよう waitUntil に載せる (best-effort)
+  c.executionCtx.waitUntil(
+    appendResponseToSheet(c.env, form.id, responseId).catch(() => {
+      // best-effort: シート追記の失敗は回答受付をブロックしない
+    })
+  );
 
   return c.json({ ok: true });
 });

@@ -166,21 +166,22 @@ export default function PublicFormPage() {
         };
         await submitResponse(slug, payload);
         setAnswersByTeam((prev) => ({ ...prev, [team.id]: answers }));
-        setCompletedTeamIds((prev) => new Set(prev).add(team.id));
+        const updatedCompleted = new Set(completedTeamIds).add(team.id);
+        setCompletedTeamIds(updatedCompleted);
         toast.show('保存しました');
 
-        const nextIndex = currentIndex + 1;
-        if (nextIndex >= targetTeams.length) {
+        const firstUnanswered = targetTeams.findIndex((t) => !updatedCompleted.has(t.id));
+        if (firstUnanswered === -1) {
           setCurrentIndex(targetTeams.length);
           setPhase('done');
         } else {
-          setCurrentIndex(nextIndex);
+          setCurrentIndex(firstUnanswered);
         }
       } finally {
         setSubmitting(false);
       }
     },
-    [respondentId, slug, currentIndex, targetTeams.length, toast],
+    [respondentId, slug, completedTeamIds, targetTeams, toast],
   );
 
   const handlePrev = () => {

@@ -12,10 +12,12 @@ interface Token {
   pos: number;
 }
 
-function tokenize(expression: string): Token[] {
+function tokenize(expression: string, knownVars: string[] = []): Token[] {
   const tokens: Token[] = [];
   const n = expression.length;
   let i = 0;
+  // 既知の変数名は長い順に試す (最長一致優先)
+  const sortedVars = [...knownVars].sort((a, b) => b.length - a.length);
 
   while (i < n) {
     const c = expression[i];
@@ -34,10 +36,29 @@ function tokenize(expression: string): Token[] {
     }
 
     if (/[A-Za-z_]/.test(c)) {
+      // ハイフンも含めた最大の識別子候補
       let j = i + 1;
       while (j < n && /[A-Za-z0-9_-]/.test(expression[j])) j++;
-      tokens.push({ type: 'ident', value: expression.slice(i, j), pos: i });
-      i = j;
+      const maximalRun = expression.slice(i, j);
+
+      let identValue: string;
+      if (sortedVars.includes(maximalRun)) {
+        // 最大識別子候補がそのまま既知の変数名 (ハイフン付き変数名を含む)
+        identValue = maximalRun;
+      } else {
+        // 既知変数名のうち、ここから始まる最長一致を探す
+        const matched = sortedVars.find((v) => maximalRun.startsWith(v));
+        if (matched) {
+          identValue = matched;
+        } else {
+          // 一致しなければハイフンを含まない識別子として読み直す
+          let k = i + 1;
+          while (k < n && /[A-Za-z0-9_]/.test(expression[k])) k++;
+          identValue = expression.slice(i, k);
+        }
+      }
+      tokens.push({ type: 'ident', value: identValue, pos: i });
+      i += identValue.length;
       continue;
     }
 
@@ -159,7 +180,7 @@ class Parser {
 
 /** 式を評価する。未知変数・構文エラー・ゼロ除算は例外を投げる。 */
 export function evaluate(expression: string, vars: Record<string, number>): number {
-  const tokens = tokenize(expression);
+  const tokens = tokenize(expression, Object.keys(vars));
   const parser = new Parser(tokens, vars);
   return parser.parse();
 }

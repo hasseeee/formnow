@@ -7,7 +7,7 @@ import * as db from './db';
 import type { AdminResponseView } from './db';
 import { computeFormSummary, computeFormulaResults } from './services';
 import { stripMarkdown } from './logic/csv';
-import { responseScore } from './logic/scoring';
+import { isScorable, responseScore } from './logic/scoring';
 import type { AnswerValue, Question } from '../shared/types';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -147,6 +147,29 @@ export function summaryTabName(slug: string): string {
   return `${slug}_集計`;
 }
 
+/** 1始まりの列番号をA1表記の列文字に変換する (1→A, 26→Z, 27→AA, ...) */
+export function columnNumberToLetter(n: number): string {
+  let s = '';
+  let num = n;
+  while (num > 0) {
+    const rem = (num - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    num = Math.floor((num - 1) / 26);
+  }
+  return s;
+}
+
+/**
+ * values.update (PUT) 用のA1範囲を組み立てる。単一セル範囲に複数行/列のデータを
+ * PUTすると400になるため、実際の行数・列数に合わせた範囲にする。
+ * rows/cols が 0 の場合は 'A1' の単一セル範囲を返す。
+ */
+export function buildValuesRange(tabName: string, rows: number, cols: number): string {
+  const sheetPrefix = escapeSheetName(tabName);
+  if (rows <= 0 || cols <= 0) return `${sheetPrefix}!A1`;
+  return `${sheetPrefix}!A1:${columnNumberToLetter(cols)}${rows}`;
+}
+
 type CellValue = string | number;
 
 /** 回答タブのヘッダー行 */
@@ -274,10 +297,12 @@ async function writeSheetValues(
   tabName: string,
   values: CellValue[][]
 ): Promise<void> {
-  const range = `${escapeSheetName(tabName)}!A1`;
+  const rows = values.length;
+  const cols = values.reduce((m, r) => Math.max(m, r.length), 0);
+  const range = buildValuesRange(tabName, rows, cols);
   await sheetsFetch(
     accessToken,
-    `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
     {
       method: 'PUT',
       body: JSON.stringify({ range, values }),
@@ -296,7 +321,7 @@ async function appendSheetRow(
     accessToken,
     `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(
       range
-    )}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    )}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     {
       method: 'POST',
       body: JSON.stringify({ range, values: [row] }),
@@ -363,10 +388,6 @@ async function requireSheetsContext(
   return { sheetId: form.sheetId, slug: form.slug, eventId: form.eventId, serviceAccountJson: env.GOOGLE_SERVICE_ACCOUNT_JSON };
 }
 
-function isScorableType(type: Question['type']): boolean {
-  return type === 'rating' || type === 'number' || type === 'choice' || type === 'checkbox';
-}
-
 /**
  * フォームの全回答で「<slug>_回答」タブを書き直し、「<slug>_集計」タブにチーム別集計
  * (＋イベントに計算式があればその結果ランキング) を書く。
@@ -388,7 +409,7 @@ export async function syncFormToSheet(env: Env, formId: number): Promise<{ rows:
   await writeSheetValues(accessToken, sheetId, responseTab, [headerRow, ...dataRows]);
 
   const summary = await computeFormSummary(env.DB, formId);
-  const scoredQuestions = questions.filter((q) => isScorableType(q.type));
+  const scoredQuestions = questions.filter((q) => isScorable(q));
   const teamRows: SummarySheetTeamRow[] = (summary?.teams ?? []).map((t) => ({
     rank: t.rank,
     teamName: t.teamName,

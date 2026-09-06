@@ -169,6 +169,81 @@ async function upsertOrderedList<T extends HasOptionalId>(
   }
 }
 
+// ---------- 汎用: 削除しないマージ (id指定は更新、id無しはmatchKeyで既存行に解決、一致無しは追加) ----------
+
+export interface MergeExistingRow {
+  id: number;
+  matchKey: string;
+}
+
+export interface MergeItemInput<T> {
+  id?: number;
+  matchKey: string;
+  data: T;
+}
+
+export type MergePlanEntry<T> = { action: 'update'; id: number; data: T } | { action: 'insert'; data: T };
+
+/**
+ * 削除しないマージ計画を立てる純粋関数。
+ * (a) idが指定され既存行に存在すればそのidを更新
+ * (b) id無し、またはidが既存に無い場合は、未使用の既存行のうちmatchKeyが一致するものを更新
+ * (c) 一致する既存行が無ければ新規追加
+ * (d) items に含まれない既存行はそのまま残す (削除しない)
+ */
+export function planMergeUpsert<T>(existing: MergeExistingRow[], items: MergeItemInput<T>[]): MergePlanEntry<T>[] {
+  const existingById = new Map(existing.map((e) => [e.id, e]));
+  const usedIds = new Set<number>();
+  const plan: MergePlanEntry<T>[] = [];
+
+  for (const item of items) {
+    if (item.id != null && existingById.has(item.id) && !usedIds.has(item.id)) {
+      usedIds.add(item.id);
+      plan.push({ action: 'update', id: item.id, data: item.data });
+      continue;
+    }
+    const match = existing.find((e) => e.matchKey === item.matchKey && !usedIds.has(e.id));
+    if (match) {
+      usedIds.add(match.id);
+      plan.push({ action: 'update', id: match.id, data: item.data });
+      continue;
+    }
+    plan.push({ action: 'insert', data: item.data });
+  }
+
+  return plan;
+}
+
+async function executeMergePlan<T>(
+  db: D1Database,
+  table: string,
+  parentColumn: string,
+  parentId: number,
+  plan: MergePlanEntry<T>[],
+  columns: string[],
+  toValues: (item: T) => unknown[]
+): Promise<void> {
+  const stmts: D1PreparedStatement[] = [];
+  for (const entry of plan) {
+    const values = toValues(entry.data);
+    if (entry.action === 'update') {
+      const setClause = columns.map((col) => `${col} = ?`).join(', ');
+      stmts.push(db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).bind(...values, entry.id));
+    } else {
+      const colList = columns.join(', ');
+      const placeholders = columns.map(() => '?').join(', ');
+      stmts.push(
+        db
+          .prepare(`INSERT INTO ${table} (${parentColumn}, ${colList}) VALUES (?, ${placeholders})`)
+          .bind(parentId, ...values)
+      );
+    }
+  }
+  if (stmts.length > 0) {
+    await db.batch(stmts);
+  }
+}
+
 // ---------- events ----------
 
 export async function createEvent(db: D1Database, name: string): Promise<Event> {
@@ -239,6 +314,26 @@ export async function upsertTeams(db: D1Database, eventId: number, items: TeamIn
   return listTeams(db, eventId);
 }
 
+/**
+ * チーム一覧を「削除しないマージ」で反映する (MCP set_teams用)。
+ * idが一致すれば更新、id無しは既存チームと同名なら更新扱い、一致しなければ追加。
+ * items に含まれない既存チームは削除しない。
+ */
+export async function mergeTeams(db: D1Database, eventId: number, items: TeamInput[]): Promise<Team[]> {
+  const existingRes = await db
+    .prepare('SELECT id, name FROM teams WHERE event_id = ?')
+    .bind(eventId)
+    .all<{ id: number; name: string }>();
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.name }));
+  const mergeItems: MergeItemInput<TeamInput>[] = items.map((i) => ({ id: i.id, matchKey: i.name, data: i }));
+  const plan = planMergeUpsert(existing, mergeItems);
+  await executeMergePlan(db, 'teams', 'event_id', eventId, plan, ['name', 'sort_order'], (i) => [
+    i.name,
+    i.sortOrder,
+  ]);
+  return listTeams(db, eventId);
+}
+
 // ---------- respondents ----------
 
 export interface RespondentInput {
@@ -276,17 +371,71 @@ export async function listRespondentsForFormKind(
   return (results ?? []).map(mapRespondent);
 }
 
+/** teamIdが同一イベントのチームでない場合に投げるエラー。呼び出し側で400として扱う。 */
+export class RespondentTeamMismatchError extends Error {}
+
+/** items内のteamId (null以外) が全て同一イベントのチームであることを検証する。違えばエラーを投げる。 */
+async function validateRespondentTeamIds(
+  db: D1Database,
+  eventId: number,
+  items: { teamId: number | null }[]
+): Promise<void> {
+  const teamIds = [...new Set(items.map((i) => i.teamId).filter((id): id is number => id != null))];
+  if (teamIds.length === 0) return;
+  const placeholders = teamIds.map(() => '?').join(',');
+  const { results } = await db
+    .prepare(`SELECT id FROM teams WHERE event_id = ? AND id IN (${placeholders})`)
+    .bind(eventId, ...teamIds)
+    .all<{ id: number }>();
+  const validIds = new Set((results ?? []).map((r) => r.id));
+  const invalid = teamIds.filter((id) => !validIds.has(id));
+  if (invalid.length > 0) {
+    throw new RespondentTeamMismatchError(`teamId ${invalid.join(', ')} は同じイベントのチームではありません`);
+  }
+}
+
 export async function upsertRespondents(
   db: D1Database,
   eventId: number,
   items: RespondentInput[]
 ): Promise<Respondent[]> {
+  await validateRespondentTeamIds(db, eventId, items);
   await upsertOrderedList(
     db,
     'respondents',
     'event_id',
     eventId,
     items,
+    ['name', 'role', 'team_id', 'sort_order'],
+    (i) => [i.name, i.role, i.teamId, i.sortOrder]
+  );
+  return listRespondents(db, eventId);
+}
+
+/**
+ * 回答者一覧を「削除しないマージ」で反映する (MCP set_respondents用)。
+ * idが一致すれば更新、id無しは既存回答者と同名なら更新扱い、一致しなければ追加。
+ * items に含まれない既存回答者は削除しない。teamIdは同一イベントのチームか検証する。
+ */
+export async function mergeRespondents(
+  db: D1Database,
+  eventId: number,
+  items: RespondentInput[]
+): Promise<Respondent[]> {
+  await validateRespondentTeamIds(db, eventId, items);
+  const existingRes = await db
+    .prepare('SELECT id, name FROM respondents WHERE event_id = ?')
+    .bind(eventId)
+    .all<{ id: number; name: string }>();
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.name }));
+  const mergeItems: MergeItemInput<RespondentInput>[] = items.map((i) => ({ id: i.id, matchKey: i.name, data: i }));
+  const plan = planMergeUpsert(existing, mergeItems);
+  await executeMergePlan(
+    db,
+    'respondents',
+    'event_id',
+    eventId,
+    plan,
     ['name', 'role', 'team_id', 'sort_order'],
     (i) => [i.name, i.role, i.teamId, i.sortOrder]
   );
@@ -411,6 +560,39 @@ export async function upsertQuestions(db: D1Database, formId: number, items: Que
   return listQuestions(db, formId);
 }
 
+/**
+ * 質問一覧を「削除しないマージ」で反映する (MCP set_questions用)。
+ * idが一致すれば更新、id無しはlabelMdが完全一致する既存質問があれば更新扱い、一致しなければ追加。
+ * items に含まれない既存質問は削除しない。
+ */
+export async function mergeQuestions(db: D1Database, formId: number, items: QuestionInput[]): Promise<Question[]> {
+  const existingRes = await db
+    .prepare('SELECT id, label_md FROM questions WHERE form_id = ?')
+    .bind(formId)
+    .all<{ id: number; label_md: string }>();
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.label_md }));
+  const mergeItems: MergeItemInput<QuestionInput>[] = items.map((i) => ({ id: i.id, matchKey: i.labelMd, data: i }));
+  const plan = planMergeUpsert(existing, mergeItems);
+  await executeMergePlan(
+    db,
+    'questions',
+    'form_id',
+    formId,
+    plan,
+    ['sort_order', 'type', 'label_md', 'options_json', 'max_score', 'weight', 'required'],
+    (i) => [
+      i.sortOrder,
+      i.type,
+      i.labelMd,
+      i.options ? JSON.stringify(i.options) : null,
+      i.maxScore,
+      i.weight,
+      i.required ? 1 : 0,
+    ]
+  );
+  return listQuestions(db, formId);
+}
+
 // ---------- responses / answers ----------
 
 export interface AnswerInput {
@@ -450,7 +632,13 @@ export async function getResponse(
   return row ? { id: row.id, submittedAt: row.submitted_at } : null;
 }
 
-/** 回答をupsertする。既存回答は answers を全削除→再挿入。 */
+/**
+ * 回答をupsertする。
+ * 1. INSERT ... ON CONFLICT DO UPDATE で responses 行をアトミックに作成/更新し id を得る
+ *    (TOCTOU: 事前にgetResponseで存在確認してからINSERTする方式だと競合時に重複行やエラーが起こりうるため)
+ * 2. answers の DELETE + INSERT を単一 batch にまとめる
+ *    (別batchだとDELETE成功後にINSERTが失敗した場合、既存回答が消えたまま復元できない事故が起こる)
+ */
 export async function upsertResponse(
   db: D1Database,
   formId: number,
@@ -458,29 +646,25 @@ export async function upsertResponse(
   teamId: number,
   answers: AnswerInput[]
 ): Promise<number> {
-  const existing = await getResponse(db, formId, respondentId, teamId);
-  let responseId: number;
-  if (existing) {
-    responseId = existing.id;
-    await db.batch([
-      db.prepare('DELETE FROM answers WHERE response_id = ?').bind(responseId),
-      db.prepare("UPDATE responses SET submitted_at = datetime('now') WHERE id = ?").bind(responseId),
-    ]);
-  } else {
-    const row = await db
-      .prepare('INSERT INTO responses (form_id, respondent_id, team_id) VALUES (?, ?, ?) RETURNING id')
-      .bind(formId, respondentId, teamId)
-      .first<{ id: number }>();
-    responseId = row!.id;
-  }
-  if (answers.length > 0) {
-    const stmts = answers.map((a) =>
+  const row = await db
+    .prepare(
+      `INSERT INTO responses (form_id, respondent_id, team_id) VALUES (?, ?, ?)
+       ON CONFLICT(form_id, respondent_id, team_id) DO UPDATE SET submitted_at = datetime('now')
+       RETURNING id`
+    )
+    .bind(formId, respondentId, teamId)
+    .first<{ id: number }>();
+  const responseId = row!.id;
+
+  const stmts: D1PreparedStatement[] = [db.prepare('DELETE FROM answers WHERE response_id = ?').bind(responseId)];
+  for (const a of answers) {
+    stmts.push(
       db
         .prepare('INSERT INTO answers (response_id, question_id, value_json) VALUES (?, ?, ?)')
         .bind(responseId, a.questionId, JSON.stringify(a.value))
     );
-    await db.batch(stmts);
   }
+  await db.batch(stmts);
   return responseId;
 }
 
@@ -490,7 +674,9 @@ export async function listMyResponses(
   respondentId: number
 ): Promise<{ responses: { teamId: number; submittedAt: string; answers: AnswerInput[] }[] }> {
   const { results } = await db
-    .prepare('SELECT id, team_id, submitted_at FROM responses WHERE form_id = ? AND respondent_id = ?')
+    .prepare(
+      'SELECT id, team_id, submitted_at FROM responses WHERE form_id = ? AND respondent_id = ? ORDER BY team_id'
+    )
     .bind(formId, respondentId)
     .all<{ id: number; team_id: number; submitted_at: string }>();
   const rows = results ?? [];
@@ -579,6 +765,26 @@ export async function listFormulas(db: D1Database, eventId: number): Promise<For
 
 export async function upsertFormulas(db: D1Database, eventId: number, items: FormulaInput[]): Promise<Formula[]> {
   await upsertOrderedList(db, 'formulas', 'event_id', eventId, items, ['name', 'expression'], (i) => [
+    i.name,
+    i.expression,
+  ]);
+  return listFormulas(db, eventId);
+}
+
+/**
+ * 計算式一覧を「削除しないマージ」で反映する (MCP set_formulas用)。
+ * idが一致すれば更新、id無しは既存の計算式と同名なら更新扱い、一致しなければ追加。
+ * items に含まれない既存の計算式は削除しない。
+ */
+export async function mergeFormulas(db: D1Database, eventId: number, items: FormulaInput[]): Promise<Formula[]> {
+  const existingRes = await db
+    .prepare('SELECT id, name FROM formulas WHERE event_id = ?')
+    .bind(eventId)
+    .all<{ id: number; name: string }>();
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.name }));
+  const mergeItems: MergeItemInput<FormulaInput>[] = items.map((i) => ({ id: i.id, matchKey: i.name, data: i }));
+  const plan = planMergeUpsert(existing, mergeItems);
+  await executeMergePlan(db, 'formulas', 'event_id', eventId, plan, ['name', 'expression'], (i) => [
     i.name,
     i.expression,
   ]);

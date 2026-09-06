@@ -28,8 +28,9 @@ function QuestionInput({ question, value, onChange }: Omit<Props, 'error'>) {
       const current = typeof value === 'number' ? value : null;
 
       if (max > 10) {
+        const unanswered = current === null;
         return (
-          <div className="rating-slider">
+          <div className={`rating-slider${unanswered ? ' unanswered' : ''}`}>
             <input
               type="range"
               min={1}
@@ -39,7 +40,7 @@ function QuestionInput({ question, value, onChange }: Omit<Props, 'error'>) {
               onChange={(e) => onChange(Number(e.target.value))}
             />
             <span className="rating-slider-value">
-              {current ?? '未評価'} / {max}
+              {unanswered ? 'タップして評価' : `${current} / ${max}`}
             </span>
           </div>
         );
@@ -70,6 +71,8 @@ function QuestionInput({ question, value, onChange }: Omit<Props, 'error'>) {
           inputMode="decimal"
           className="text-input"
           value={current}
+          min={0}
+          max={question.maxScore ?? undefined}
           onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
         />
       );

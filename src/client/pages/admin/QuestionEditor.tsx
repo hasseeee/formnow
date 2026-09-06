@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { QuestionType } from '../../../shared/types';
 import type { QuestionInput } from '../../api';
 
@@ -22,8 +23,8 @@ const TYPE_LABEL: Record<QuestionType, string> = {
 
 const QUESTION_TYPES = Object.keys(TYPE_LABEL) as QuestionType[];
 const HAS_OPTIONS: QuestionType[] = ['choice', 'checkbox'];
-const HAS_MAX_SCORE: QuestionType[] = ['rating'];
-const SCORABLE: QuestionType[] = ['rating', 'number', 'choice'];
+const HAS_MAX_SCORE: QuestionType[] = ['rating', 'number'];
+const SCORABLE: QuestionType[] = ['rating', 'number', 'choice', 'checkbox'];
 
 export default function QuestionEditor({
   question,
@@ -34,6 +35,25 @@ export default function QuestionEditor({
   canMoveUp,
   canMoveDown,
 }: Props) {
+  // weight入力: 空文字での確定でNumber('')=0になってしまうのを防ぐため、
+  // 表示用のテキストをローカルで保持し、blur時に確定する（空のままなら直前値を保持）
+  const [weightText, setWeightText] = useState<string>(String(question.weight));
+
+  useEffect(() => {
+    setWeightText(String(question.weight));
+  }, [question.weight]);
+
+  const commitWeight = () => {
+    const trimmed = weightText.trim();
+    const parsed = Number(trimmed);
+    if (trimmed === '' || Number.isNaN(parsed)) {
+      // 空/不正な値のままなら直前値を保持する
+      setWeightText(String(question.weight));
+      return;
+    }
+    onChange({ weight: parsed });
+  };
+
   const handleTypeChange = (type: QuestionType) => {
     const patch: Partial<QuestionInput> = { type };
     if (HAS_OPTIONS.includes(type)) {
@@ -68,6 +88,14 @@ export default function QuestionEditor({
     onChange({ options });
   };
 
+  const handleRemove = () => {
+    if (question.id !== undefined) {
+      const ok = window.confirm('この質問を削除すると、この質問への回答もすべて削除されます。よろしいですか？');
+      if (!ok) return;
+    }
+    onRemove();
+  };
+
   return (
     <div className="card question-editor">
       <div className="question-editor-row">
@@ -94,7 +122,7 @@ export default function QuestionEditor({
           >
             ↓
           </button>
-          <button type="button" className="btn btn-danger-ghost" onClick={onRemove}>
+          <button type="button" className="btn btn-danger-ghost" onClick={handleRemove}>
             削除
           </button>
         </div>
@@ -163,9 +191,10 @@ export default function QuestionEditor({
             <input
               type="number"
               className="text-input"
-              value={question.weight}
+              value={weightText}
               step={0.1}
-              onChange={(e) => onChange({ weight: Number(e.target.value) })}
+              onChange={(e) => setWeightText(e.target.value)}
+              onBlur={commitWeight}
             />
           </label>
         )}

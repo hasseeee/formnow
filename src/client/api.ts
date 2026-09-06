@@ -59,6 +59,9 @@ export function setUnauthorizedListener(listener: UnauthorizedListener | null): 
 }
 
 function notifyUnauthorized(): void {
+  // 並行リクエストが同時に401を返すと複数回呼ばれうるため、
+  // 既にトークンが失効済み（＝通知済み）なら再通知しない
+  if (getAdminToken() === null) return;
   clearAdminToken();
   unauthorizedListener?.();
 }
@@ -215,7 +218,7 @@ export interface FormResponsesView {
 
 export interface SyncSheetsResult {
   ok: boolean;
-  message?: string;
+  rows?: number;
 }
 
 // ---------- 管理API ----------
@@ -234,6 +237,10 @@ export function createEvent(name: string): Promise<Event> {
 
 export function getEventDetail(id: number): Promise<EventDetailView> {
   return request<EventDetailView>(`/api/admin/events/${id}`, { admin: true });
+}
+
+export function deleteEvent(id: number): Promise<void> {
+  return request<void>(`/api/admin/events/${id}`, { admin: true, method: 'DELETE' });
 }
 
 export function saveTeams(eventId: number, teams: TeamInput[]): Promise<Team[]> {
@@ -273,6 +280,10 @@ export function createForm(input: CreateFormInput): Promise<Form> {
 
 export function getForm(id: number): Promise<FormDetailView> {
   return request<FormDetailView>(`/api/admin/forms/${id}`, { admin: true });
+}
+
+export function deleteForm(id: number): Promise<void> {
+  return request<void>(`/api/admin/forms/${id}`, { admin: true, method: 'DELETE' });
 }
 
 export type UpdateFormPatch = Partial<

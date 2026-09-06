@@ -1,14 +1,25 @@
 // 純粋関数: 回答リスト＋チームリストからチーム別集計を行う。D1に依存しない。
 import type { AnswerValue, Question, Team, TeamSummary } from '../../shared/types';
-import { numericValue, responseScore } from './scoring';
+import { isScorable, numericValue, responseScore } from './scoring';
 
 export interface AggregateResponseInput {
   teamId: number;
   answers: { questionId: number; value: AnswerValue }[];
 }
 
-function isScorableType(type: Question['type']): boolean {
-  return type === 'rating' || type === 'number' || type === 'choice' || type === 'checkbox';
+/**
+ * rank昇順でソートする (rank=nullは末尾、null同士は元の並び順=sort_order順を維持する)。
+ */
+export function sortByRank<T extends { rank: number | null }>(items: T[]): T[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      if (a.item.rank === null && b.item.rank === null) return a.index - b.index;
+      if (a.item.rank === null) return 1;
+      if (b.item.rank === null) return -1;
+      return a.item.rank - b.item.rank;
+    })
+    .map(({ item }) => item);
 }
 
 /**
@@ -54,7 +65,7 @@ export function aggregateTeamSummaries(
   questions: Question[],
   teams: Team[]
 ): TeamSummary[] {
-  const scoredQuestions = questions.filter((q) => isScorableType(q.type));
+  const scoredQuestions = questions.filter((q) => isScorable(q));
 
   const responsesByTeam = new Map<number, AggregateResponseInput[]>();
   for (const team of teams) responsesByTeam.set(team.id, []);
@@ -89,7 +100,7 @@ export function aggregateTeamSummaries(
 
   const rankMap = computeRanks(partials.map((p) => ({ id: p.teamId, value: p.avg })));
 
-  return partials.map((p) => ({
+  const summaries = partials.map((p) => ({
     teamId: p.teamId,
     teamName: p.teamName,
     count: p.count,
@@ -98,4 +109,6 @@ export function aggregateTeamSummaries(
     rank: rankMap.get(p.teamId) ?? null,
     questionAvgs: p.questionAvgs,
   }));
+
+  return sortByRank(summaries);
 }

@@ -24,7 +24,14 @@ export default function FormulasTab({ eventId, formulas, onSaved }: Props) {
   };
 
   const addRow = () => setRows((prev) => [...prev, { name: '', expression: '' }]);
-  const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index));
+  const removeRow = (index: number) => {
+    const target = rows[index];
+    if (target?.id !== undefined) {
+      const ok = window.confirm('この計算式を削除しますか？');
+      if (!ok) return;
+    }
+    setRows((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSave = async () => {
     setSaving(true);

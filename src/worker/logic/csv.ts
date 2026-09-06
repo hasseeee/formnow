@@ -11,8 +11,24 @@ export function escapeCsvField(field: string): string {
   return field;
 }
 
+/** 文字列が実質的に数値表記か (整数/小数、先頭の-可) を判定する */
+function looksNumeric(field: string): boolean {
+  return /^-?\d+(\.\d+)?$/.test(field.trim());
+}
+
+/**
+ * CSV/スプレッドシートの数式インジェクション対策。
+ * `= + - @ \t` で始まる文字列セルの先頭に `'` を付与し、文字列として展開されるようにする。
+ * 数値表記のセル（スコアなど）はそのまま返す。
+ */
+export function escapeFormulaInjection(field: string): string {
+  if (looksNumeric(field)) return field;
+  if (/^[=+\-@\t]/.test(field)) return `'${field}`;
+  return field;
+}
+
 export function toCsvRow(fields: string[]): string {
-  return fields.map(escapeCsvField).join(',');
+  return fields.map((f) => escapeCsvField(escapeFormulaInjection(f))).join(',');
 }
 
 /** 行の配列からCSV文字列を生成する（CRLF区切り、Excel対応）。BOMは含まない。 */

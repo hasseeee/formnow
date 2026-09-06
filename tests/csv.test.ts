@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CSV_BOM, escapeCsvField, stripMarkdown, toCsv, toCsvRow } from '../src/worker/logic/csv';
+import { CSV_BOM, escapeCsvField, escapeFormulaInjection, stripMarkdown, toCsv, toCsvRow } from '../src/worker/logic/csv';
 
 describe('escapeCsvField', () => {
   it('特殊文字を含まない場合はそのまま返す', () => {
@@ -42,6 +42,41 @@ describe('toCsvRow / toCsv', () => {
   it('フィールドのエスケープを適用する', () => {
     const csv = toCsv([['a,b', 'say "hi"']]);
     expect(csv).toBe('"a,b","say ""hi"""');
+  });
+});
+
+describe('escapeFormulaInjection', () => {
+  it('= + - @ タブで始まる文字列に \' を付与する', () => {
+    expect(escapeFormulaInjection('=SUM(A1:A2)')).toBe("'=SUM(A1:A2)");
+    expect(escapeFormulaInjection('+1+1')).toBe("'+1+1");
+    expect(escapeFormulaInjection('-cmd|calc')).toBe("'-cmd|calc");
+    expect(escapeFormulaInjection('@echo')).toBe("'@echo");
+    expect(escapeFormulaInjection('\tfoo')).toBe("'\tfoo");
+  });
+
+  it('数値表記の文字列 (負の数含む) はそのまま返す', () => {
+    expect(escapeFormulaInjection('10')).toBe('10');
+    expect(escapeFormulaInjection('-5')).toBe('-5');
+    expect(escapeFormulaInjection('-5.5')).toBe('-5.5');
+  });
+
+  it('特殊文字で始まらない文字列はそのまま返す', () => {
+    expect(escapeFormulaInjection('hello')).toBe('hello');
+    expect(escapeFormulaInjection('')).toBe('');
+  });
+});
+
+describe('toCsvRow / toCsv 数式インジェクション対策', () => {
+  it('=で始まるセルをCSV出力時にエスケープする', () => {
+    expect(toCsvRow(['=SUM(A1:A2)', 'normal'])).toBe("'=SUM(A1:A2),normal");
+  });
+
+  it('数式インジェクション対策後にカンマを含む場合は引用符でも囲む', () => {
+    expect(toCsvRow(['=A,B', 'normal'])).toBe('"\'=A,B",normal');
+  });
+
+  it('スコアなど数値文字列のセルはエスケープしない', () => {
+    expect(toCsvRow(['-5', '10'])).toBe('-5,10');
   });
 });
 

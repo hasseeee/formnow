@@ -5,5 +5,4 @@ export interface Env {
   ADMIN_TOKEN: string;
   MCP_TOKEN: string;
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
-  ASSETS: Fetcher;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { maxPossibleScore, numericValue, responseScore } from '../src/worker/logic/scoring';
+import { isScorable, maxPossibleScore, numericValue, responseScore } from '../src/worker/logic/scoring';
 import type { Question } from '../src/shared/types';
 
 function makeQuestion(overrides: Partial<Question>): Question {
@@ -16,6 +16,31 @@ function makeQuestion(overrides: Partial<Question>): Question {
     ...overrides,
   };
 }
+
+describe('isScorable', () => {
+  it('rating/number は常に採点対象', () => {
+    expect(isScorable(makeQuestion({ type: 'rating' }))).toBe(true);
+    expect(isScorable(makeQuestion({ type: 'number' }))).toBe(true);
+  });
+
+  it('text/textarea は常に採点対象外', () => {
+    expect(isScorable(makeQuestion({ type: 'text' }))).toBe(false);
+    expect(isScorable(makeQuestion({ type: 'textarea' }))).toBe(false);
+  });
+
+  it('choice/checkbox はscoreを持つ選択肢が1つもなければ採点対象外', () => {
+    expect(isScorable(makeQuestion({ type: 'choice', options: [{ label: 'A' }, { label: 'B' }] }))).toBe(false);
+    expect(isScorable(makeQuestion({ type: 'checkbox', options: [{ label: 'A' }] }))).toBe(false);
+    expect(isScorable(makeQuestion({ type: 'choice', options: null }))).toBe(false);
+  });
+
+  it('choice/checkbox はscoreを持つ選択肢が1つでもあれば採点対象', () => {
+    expect(
+      isScorable(makeQuestion({ type: 'choice', options: [{ label: 'A' }, { label: 'B', score: 5 }] }))
+    ).toBe(true);
+    expect(isScorable(makeQuestion({ type: 'checkbox', options: [{ label: 'A', score: 0 }] }))).toBe(true);
+  });
+});
 
 describe('numericValue', () => {
   it('rating/number はそのまま数値を返す', () => {
@@ -40,9 +65,9 @@ describe('numericValue', () => {
     expect(numericValue(q, 'A')).toBe(0);
   });
 
-  it('choice で一致する選択肢が無ければ0を返す', () => {
+  it('choice で一致する選択肢が無ければnullを返す (採点除外)', () => {
     const q = makeQuestion({ type: 'choice', options: [{ label: 'A', score: 10 }] });
-    expect(numericValue(q, 'unknown')).toBe(0);
+    expect(numericValue(q, 'unknown')).toBeNull();
   });
 
   it('checkbox は選択したoptionsのscore合計を返す', () => {

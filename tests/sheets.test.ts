@@ -5,6 +5,8 @@ import {
   buildResponseDataRow,
   buildResponseHeaderRow,
   buildSummarySheetRows,
+  buildValuesRange,
+  columnNumberToLetter,
   escapeSheetName,
   pemToArrayBuffer,
   responseTabName,
@@ -34,6 +36,38 @@ describe('escapeSheetName', () => {
 
   it('内部のシングルクォートは二重化する', () => {
     expect(escapeSheetName("O'Brien")).toBe("'O''Brien'");
+  });
+});
+
+describe('columnNumberToLetter', () => {
+  it('1〜26はA〜Zに変換する', () => {
+    expect(columnNumberToLetter(1)).toBe('A');
+    expect(columnNumberToLetter(26)).toBe('Z');
+  });
+
+  it('27以降は2文字になる (AA, AB, ...)', () => {
+    expect(columnNumberToLetter(27)).toBe('AA');
+    expect(columnNumberToLetter(28)).toBe('AB');
+    expect(columnNumberToLetter(52)).toBe('AZ');
+    expect(columnNumberToLetter(53)).toBe('BA');
+  });
+
+  it('702は3文字目の境界 (ZZ) になる', () => {
+    expect(columnNumberToLetter(702)).toBe('ZZ');
+    expect(columnNumberToLetter(703)).toBe('AAA');
+  });
+});
+
+describe('buildValuesRange', () => {
+  it('行数・列数に応じたA1範囲を組み立てる', () => {
+    expect(buildValuesRange('シート1', 3, 5)).toBe("'シート1'!A1:E3");
+    expect(buildValuesRange('シート1', 1, 1)).toBe("'シート1'!A1:A1");
+    expect(buildValuesRange('シート1', 10, 27)).toBe("'シート1'!A1:AA10");
+  });
+
+  it('行/列が0の場合は単一セル範囲を返す', () => {
+    expect(buildValuesRange('シート1', 0, 5)).toBe("'シート1'!A1");
+    expect(buildValuesRange('シート1', 5, 0)).toBe("'シート1'!A1");
   });
 });
 

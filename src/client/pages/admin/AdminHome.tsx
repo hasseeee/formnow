@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { Event } from '../../../shared/types';
-import { ApiRequestError, createEvent, listEvents } from '../../api';
+import { ApiRequestError, createEvent, deleteEvent, listEvents } from '../../api';
+import { useToast } from '../../components/Toast';
 
 export default function AdminHome() {
+  const toast = useToast();
   const [events, setEvents] = useState<Event[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -37,6 +39,20 @@ export default function AdminHome() {
     }
   };
 
+  const handleDelete = async (ev: Event) => {
+    const ok = window.confirm(
+      `「${ev.name}」を削除しますか？チーム・回答者・フォーム・回答データもすべて削除されます。`,
+    );
+    if (!ok) return;
+    try {
+      await deleteEvent(ev.id);
+      toast.show('イベントを削除しました');
+      load();
+    } catch (err) {
+      toast.show(err instanceof ApiRequestError ? err.message : '削除に失敗しました。', 'error');
+    }
+  };
+
   return (
     <div className="admin-page">
       <h1>イベント一覧</h1>
@@ -61,6 +77,13 @@ export default function AdminHome() {
           {events.map((ev) => (
             <li key={ev.id} className="card event-list-item">
               <Link to={`/admin/events/${ev.id}`}>{ev.name}</Link>
+              <button
+                type="button"
+                className="btn btn-danger-ghost"
+                onClick={() => handleDelete(ev)}
+              >
+                削除
+              </button>
             </li>
           ))}
         </ul>

@@ -96,6 +96,11 @@ export default function FormEditPage() {
   };
 
   const handleSaveQuestions = async () => {
+    const emptyIndex = questions.findIndex((q) => q.labelMd.trim() === '');
+    if (emptyIndex !== -1) {
+      toast.show(`質問文が未入力の質問があります（${emptyIndex + 1}番目）`, 'error');
+      return;
+    }
     setSavingQuestions(true);
     try {
       const payload = questions.map((q, i) => ({ ...q, sortOrder: i }));
@@ -178,6 +183,7 @@ export default function FormEditPage() {
             {savingQuestions ? '保存中…' : '質問を保存'}
           </button>
         </div>
+        <p className="small-hint">一覧から削除した項目は保存時にデータベースからも削除されます</p>
       </section>
     </div>
   );
