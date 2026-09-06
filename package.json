@@ -1,0 +1,36 @@
+{
+  "name": "formnow",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "tsc -b",
+    "test": "vitest run",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply formnow --local",
+    "db:migrate:remote": "wrangler d1 migrations apply formnow --remote"
+  },
+  "dependencies": {
+    "@hono/mcp": "^0.3.2",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dompurify": "^3.4.15",
+    "hono": "^4.13.7",
+    "marked": "^18.0.11",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.54.4",
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.86.0"
+  }
+}
