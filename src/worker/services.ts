@@ -4,11 +4,31 @@ import * as db from './db';
 import { aggregateTeamSummaries, computeRanks, sortByRank } from './logic/aggregate';
 import { evaluate } from './logic/formula';
 import { maxPossibleScore } from './logic/scoring';
-import type { FormSummary, FormulaResults } from '../shared/types';
+import type { Form, FormSummary, FormulaResults, PublicFormView } from '../shared/types';
 
 /** evaluate() が「不明な変数」で投げた例外かどうかを判定する */
 function isUnknownVariableError(e: unknown): boolean {
   return e instanceof Error && /^不明な変数です/.test(e.message);
+}
+
+/**
+ * PublicFormView (回答画面用のフォーム一式) の組み立て。
+ * 公開API (GET /api/forms/:slug) と管理APIのプレビュー (GET /api/admin/forms/:id/preview) の
+ * 両方から呼び出される共通ロジック。draft/closed の可否判定は呼び出し側の責務とする。
+ */
+export async function buildPublicFormView(database: D1Database, form: Form): Promise<PublicFormView> {
+  const [questions, teams, respondents] = await Promise.all([
+    db.listQuestions(database, form.id),
+    db.listTeams(database, form.eventId),
+    db.listRespondentsForFormKind(database, form.eventId, form.kind),
+  ]);
+
+  return {
+    form,
+    questions,
+    teams,
+    respondents: respondents.map((r) => ({ id: r.id, name: r.name, teamId: r.teamId })),
+  };
 }
 
 /** フォームのチーム別集計 (GET /api/admin/forms/:id/summary と同じ計算)。フォームが無ければ null。 */

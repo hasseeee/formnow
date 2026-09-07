@@ -4,7 +4,8 @@ import { z } from 'zod';
 import type { Env } from '../env';
 import * as db from '../db';
 import { appendResponseToSheet } from '../sheets';
-import type { ApiError, MyResponsesView, PublicFormView, Role } from '../../shared/types';
+import { buildPublicFormView } from '../services';
+import type { ApiError, MyResponsesView, Role } from '../../shared/types';
 
 export const publicRoutes = new Hono<{ Bindings: Env }>();
 
@@ -35,18 +36,7 @@ publicRoutes.get('/:slug', async (c) => {
     return c.json<ApiError>({ error: 'form not found' }, 404);
   }
 
-  const [questions, teams, respondents] = await Promise.all([
-    db.listQuestions(c.env.DB, form.id),
-    db.listTeams(c.env.DB, form.eventId),
-    db.listRespondentsForFormKind(c.env.DB, form.eventId, form.kind),
-  ]);
-
-  const view: PublicFormView = {
-    form,
-    questions,
-    teams,
-    respondents: respondents.map((r) => ({ id: r.id, name: r.name, teamId: r.teamId })),
-  };
+  const view = await buildPublicFormView(c.env.DB, form);
   return c.json(view);
 });
 

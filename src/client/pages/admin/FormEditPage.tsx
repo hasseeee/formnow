@@ -294,6 +294,14 @@ export default function FormEditPage() {
             ))}
           </div>
           <SettingsPopover form={data.form} onUpdated={handleFormUpdated} />
+          <a
+            href={`/admin/forms/${data.form.id}/preview`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary btn-sm"
+          >
+            プレビュー
+          </a>
           <button type="button" className="btn btn-primary btn-sm" onClick={handleShare}>
             共有
           </button>

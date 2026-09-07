@@ -7,6 +7,7 @@ import AdminTokenGate from './pages/admin/AdminTokenGate';
 import AdminHome from './pages/admin/AdminHome';
 import EventDetailPage from './pages/admin/EventDetailPage';
 import FormEditPage from './pages/admin/FormEditPage';
+import PreviewPage from './pages/admin/PreviewPage';
 
 /** 旧 /admin/forms/:id/results はエディタの「回答」タブへリダイレクトする */
 function FormResultsRedirect() {
@@ -25,6 +26,7 @@ export default function App() {
             <Route index element={<AdminHome />} />
             <Route path="events/:id" element={<EventDetailPage />} />
             <Route path="forms/:id" element={<FormEditPage />} />
+            <Route path="forms/:id/preview" element={<PreviewPage />} />
             <Route path="forms/:id/results" element={<FormResultsRedirect />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

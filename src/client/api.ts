@@ -299,6 +299,11 @@ export function updateForm(id: number, patch: UpdateFormPatch): Promise<Form> {
   });
 }
 
+/** GET /api/admin/forms/:id/preview — 回答画面プレビュー用。PublicFormViewと同一形状（draft/closedでも取得可） */
+export function getFormPreview(id: number): Promise<PublicFormView> {
+  return request<PublicFormView>(`/api/admin/forms/${id}/preview`, { admin: true });
+}
+
 export function saveQuestions(formId: number, questions: QuestionInput[]): Promise<Question[]> {
   return request<Question[]>(`/api/admin/forms/${formId}/questions`, {
     admin: true,

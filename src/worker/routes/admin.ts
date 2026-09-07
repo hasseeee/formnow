@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Env } from '../env';
 import * as db from '../db';
-import { computeFormSummary, computeFormulaResults } from '../services';
+import { buildPublicFormView, computeFormSummary, computeFormulaResults } from '../services';
 import { responseScore } from '../logic/scoring';
 import { CSV_BOM, stripMarkdown, toCsv } from '../logic/csv';
 import { SheetsConfigError, SheetsApiError, syncFormToSheet } from '../sheets';
@@ -220,6 +220,20 @@ adminRoutes.get('/forms/:id', async (c) => {
   if (!form) return c.json<ApiError>({ error: 'form not found' }, 404);
   const questions = await db.listQuestions(c.env.DB, id);
   return c.json({ form, questions });
+});
+
+/**
+ * GET /api/admin/forms/:id/preview
+ * PublicFormView と同一形状を、管理認証のもとで draft/closed でも返す（回答画面のプレビュー用）。
+ */
+adminRoutes.get('/forms/:id/preview', async (c) => {
+  const id = parseIdParam(c.req.param('id'));
+  if (id === null) return c.json<ApiError>({ error: 'invalid id' }, 400);
+  const form = await db.getFormById(c.env.DB, id);
+  if (!form) return c.json<ApiError>({ error: 'form not found' }, 404);
+
+  const view = await buildPublicFormView(c.env.DB, form);
+  return c.json(view);
 });
 
 adminRoutes.put('/forms/:id/questions', async (c) => {
