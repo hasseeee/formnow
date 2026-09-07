@@ -25,7 +25,11 @@ export async function buildPublicFormView(database: D1Database, form: Form): Pro
 
   return {
     form,
-    questions,
+    // 採点の内部情報（weight・選択肢のscore）は回答者に公開しない
+    questions: questions.map(({ weight: _weight, options, ...rest }) => ({
+      ...rest,
+      options: options ? options.map((o) => ({ label: o.label })) : null,
+    })),
     teams,
     respondents: respondents.map((r) => ({ id: r.id, name: r.name, teamId: r.teamId })),
   };

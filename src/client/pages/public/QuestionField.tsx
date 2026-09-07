@@ -1,8 +1,8 @@
-import type { AnswerValue, Question } from '../../../shared/types';
+import type { AnswerValue, PublicQuestion } from '../../../shared/types';
 import Markdown from '../../components/Markdown';
 
 interface Props {
-  question: Question;
+  question: PublicQuestion;
   value: AnswerValue | null;
   error?: string;
   onChange: (value: AnswerValue | null) => void;

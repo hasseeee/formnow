@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { AnswerValue, Question, Team } from '../../../shared/types';
+import type { AnswerValue, PublicQuestion, Team } from '../../../shared/types';
 import { ApiRequestError } from '../../api';
 import QuestionField from './QuestionField';
 
@@ -7,7 +7,7 @@ export type AnswerMap = Record<number, AnswerValue | null>;
 
 interface Props {
   team: Team;
-  questions: Question[];
+  questions: PublicQuestion[];
   initialAnswers: AnswerMap;
   progressLabel: string;
   onSubmit: (answers: AnswerMap) => Promise<void>;

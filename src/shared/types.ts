@@ -68,10 +68,18 @@ export type AnswerValue = number | string | string[];
 
 // ---------- 公開API ----------
 
+/**
+ * 回答者に公開する質問。採点の内部情報（weight・選択肢のscore）は含めない。
+ * サーバー側で buildPublicFormView がこの形に落とす。
+ */
+export type PublicQuestion = Omit<Question, 'weight' | 'options'> & {
+  options: Pick<QuestionOption, 'label'>[] | null;
+};
+
 /** GET /api/forms/:slug */
 export interface PublicFormView {
   form: Form;
-  questions: Question[];
+  questions: PublicQuestion[];
   teams: Team[];
   /** このフォームの対象回答者（judge形式ならjudge、peer形式ならmember）。名前選択UI用 */
   respondents: Pick<Respondent, 'id' | 'name' | 'teamId'>[];
