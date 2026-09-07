@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { Event } from '../../../shared/types';
 import { ApiRequestError, createEvent, deleteEvent, listEvents } from '../../api';
+import KebabMenu from '../../components/KebabMenu';
 import { useToast } from '../../components/Toast';
 
 export default function AdminHome() {
@@ -77,13 +78,7 @@ export default function AdminHome() {
           {events.map((ev) => (
             <li key={ev.id} className="card event-list-item">
               <Link to={`/admin/events/${ev.id}`}>{ev.name}</Link>
-              <button
-                type="button"
-                className="btn btn-danger-ghost"
-                onClick={() => handleDelete(ev)}
-              >
-                削除
-              </button>
+              <KebabMenu items={[{ label: '削除', onClick: () => handleDelete(ev), danger: true }]} />
             </li>
           ))}
         </ul>

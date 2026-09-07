@@ -220,6 +220,26 @@ export default function FormEditPage() {
     [scheduleQuestionsSave],
   );
 
+  const handleDuplicateQuestion = useCallback(
+    (clientKey: string) => {
+      setQuestions((prev) => {
+        const index = prev.findIndex((q) => q.clientKey === clientKey);
+        if (index === -1) return prev;
+        const original = prev[index];
+        const copy: LocalQuestion = {
+          ...original,
+          id: undefined,
+          clientKey: nextClientKey(),
+        };
+        const next = [...prev];
+        next.splice(index + 1, 0, copy);
+        return next;
+      });
+      scheduleQuestionsSave();
+    },
+    [scheduleQuestionsSave],
+  );
+
   const handleMoveQuestion = useCallback(
     (clientKey: string, dir: -1 | 1) => {
       setQuestions((prev) => {
@@ -341,6 +361,7 @@ export default function FormEditPage() {
             onQuestionChange={handleQuestionChange}
             onAddQuestion={handleAddQuestion}
             onRemoveQuestion={handleRemoveQuestion}
+            onDuplicateQuestion={handleDuplicateQuestion}
             onMoveQuestion={handleMoveQuestion}
           />
         ) : (

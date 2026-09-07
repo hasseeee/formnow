@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Formula } from '../../../../shared/types';
 import { ApiRequestError, saveFormulas, type FormulaInput } from '../../../api';
+import KebabMenu from '../../../components/KebabMenu';
 import { useToast } from '../../../components/Toast';
 
 interface Props {
@@ -31,6 +32,18 @@ export default function FormulasTab({ eventId, formulas, onSaved }: Props) {
       if (!ok) return;
     }
     setRows((prev) => prev.filter((_, i) => i !== index));
+  };
+  const duplicateRow = (index: number) => {
+    setRows((prev) => {
+      const target = prev[index];
+      const copy: FormulaInput = {
+        name: target.name ? `${target.name} のコピー` : '',
+        expression: target.expression,
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, copy);
+      return next;
+    });
   };
 
   const handleSave = async () => {
@@ -70,9 +83,12 @@ export default function FormulasTab({ eventId, formulas, onSaved }: Props) {
             value={row.expression}
             onChange={(e) => update(i, { expression: e.target.value })}
           />
-          <button type="button" className="btn btn-danger-ghost" onClick={() => removeRow(i)}>
-            削除
-          </button>
+          <KebabMenu
+            items={[
+              { label: '複製', onClick: () => duplicateRow(i) },
+              { label: '削除', onClick: () => removeRow(i), danger: true },
+            ]}
+          />
         </div>
       ))}
       {rows.length === 0 && <p className="muted">計算式がまだありません。</p>}

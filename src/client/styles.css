@@ -802,6 +802,8 @@ label {
 .kebab-trigger {
   font-weight: 700;
   padding: 6px 10px;
+  min-width: 36px;
+  min-height: 36px;
 }
 
 .kebab-dropdown {
@@ -814,7 +816,7 @@ label {
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   z-index: 20;
-  min-width: 100px;
+  min-width: 130px;
   overflow: hidden;
 }
 
@@ -822,7 +824,8 @@ label {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 8px 12px;
+  padding: 10px 14px;
+  min-height: 40px;
   background: none;
   border: none;
   font: inherit;

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Form, FormKind, FormStatus } from '../../../shared/types';
-import { ApiRequestError, createForm, deleteForm } from '../../api';
+import { ApiRequestError, createForm, deleteForm, getForm, saveQuestions, type QuestionInput } from '../../api';
+import KebabMenu from '../../components/KebabMenu';
 import { useToast } from '../../components/Toast';
 
 interface Props {
@@ -20,19 +21,7 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
   const navigate = useNavigate();
   const toast = useToast();
   const [creating, setCreating] = useState<FormKind | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (openMenuId === null) return;
-    const handleClick = (e: globalThis.MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [openMenuId]);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   const handleCreate = async (kind: FormKind) => {
     setCreating(kind);
@@ -56,9 +45,40 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
     }
   };
 
-  const handleDelete = async (e: MouseEvent, form: Form) => {
-    e.stopPropagation();
-    setOpenMenuId(null);
+  const handleDuplicate = async (form: Form) => {
+    setDuplicatingId(form.id);
+    try {
+      const detail = await getForm(form.id);
+      const newForm = await createForm({
+        eventId,
+        title: `${form.title || '無題のフォーム'} のコピー`,
+        descriptionMd: form.descriptionMd,
+        kind: form.kind,
+      });
+      const questionsPayload: QuestionInput[] = detail.questions
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((q, i) => ({
+          sortOrder: i,
+          type: q.type,
+          labelMd: q.labelMd,
+          options: q.options,
+          maxScore: q.maxScore,
+          weight: q.weight,
+          required: q.required,
+        }));
+      if (questionsPayload.length > 0) {
+        await saveQuestions(newForm.id, questionsPayload);
+      }
+      toast.show('フォームを複製しました');
+      onChanged();
+    } catch (err) {
+      toast.show(err instanceof ApiRequestError ? err.message : '複製に失敗しました。', 'error');
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+
+  const handleDelete = async (form: Form) => {
     const ok = window.confirm(`「${form.title || '無題のフォーム'}」を削除しますか？回答データもすべて削除されます。`);
     if (!ok) return;
     try {
@@ -71,7 +91,7 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
   };
 
   return (
-    <section className="forms-section" ref={containerRef}>
+    <section className="forms-section">
       <div className="create-buttons">
         <button
           type="button"
@@ -114,7 +134,7 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
                 <span className="form-card-title">{f.title || '無題のフォーム'}</span>
               </div>
               <p className="muted form-card-url">/f/{f.slug}</p>
-              <div className="form-card-actions">
+              <div className="form-card-actions" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -122,30 +142,15 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
                 >
                   URLをコピー
                 </button>
-                <div className="kebab-menu">
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm kebab-trigger"
-                    aria-label="その他の操作"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId((cur) => (cur === f.id ? null : f.id));
-                    }}
-                  >
-                    ⋯
-                  </button>
-                  {openMenuId === f.id && (
-                    <div className="kebab-dropdown" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="kebab-item kebab-item-danger"
-                        onClick={(e) => handleDelete(e, f)}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <KebabMenu
+                  items={[
+                    {
+                      label: duplicatingId === f.id ? '複製中…' : '複製',
+                      onClick: () => handleDuplicate(f),
+                    },
+                    { label: '削除', onClick: () => handleDelete(f), danger: true },
+                  ]}
+                />
               </div>
             </div>
           ))}

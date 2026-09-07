@@ -18,6 +18,7 @@ interface Props {
   onQuestionChange: (clientKey: string, patch: Partial<QuestionInput>) => void;
   onAddQuestion: () => void;
   onRemoveQuestion: (clientKey: string) => void;
+  onDuplicateQuestion: (clientKey: string) => void;
   onMoveQuestion: (clientKey: string, dir: -1 | 1) => void;
 }
 
@@ -32,6 +33,7 @@ export default function QuestionsPanel({
   onQuestionChange,
   onAddQuestion,
   onRemoveQuestion,
+  onDuplicateQuestion,
   onMoveQuestion,
 }: Props) {
   return (
@@ -68,6 +70,7 @@ export default function QuestionsPanel({
               question={q}
               onChange={(patch) => onQuestionChange(q.clientKey, patch)}
               onRemove={() => onRemoveQuestion(q.clientKey)}
+              onDuplicate={() => onDuplicateQuestion(q.clientKey)}
               onMoveUp={() => onMoveQuestion(q.clientKey, -1)}
               onMoveDown={() => onMoveQuestion(q.clientKey, 1)}
               canMoveUp={i > 0}

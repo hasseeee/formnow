@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { QuestionType } from '../../../shared/types';
 import type { QuestionInput } from '../../api';
+import KebabMenu from '../../components/KebabMenu';
 
 interface Props {
   question: QuestionInput;
   onChange: (patch: Partial<QuestionInput>) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
@@ -30,6 +32,7 @@ export default function QuestionEditor({
   question,
   onChange,
   onRemove,
+  onDuplicate,
   onMoveUp,
   onMoveDown,
   canMoveUp,
@@ -122,9 +125,12 @@ export default function QuestionEditor({
           >
             ↓
           </button>
-          <button type="button" className="btn btn-danger-ghost" onClick={handleRemove}>
-            削除
-          </button>
+          <KebabMenu
+            items={[
+              { label: '複製', onClick: onDuplicate },
+              { label: '削除', onClick: handleRemove, danger: true },
+            ]}
+          />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Respondent, Role, Team } from '../../../../shared/types';
 import { ApiRequestError, saveRespondents, type RespondentInput } from '../../../api';
+import KebabMenu from '../../../components/KebabMenu';
 import { useToast } from '../../../components/Toast';
 
 interface Props {
@@ -132,9 +133,7 @@ export default function RespondentsTab({ eventId, respondents, teams, onSaved }:
             >
               ↓
             </button>
-            <button type="button" className="btn btn-danger-ghost" onClick={() => removeRow(i)}>
-              削除
-            </button>
+            <KebabMenu items={[{ label: '削除', onClick: () => removeRow(i), danger: true }]} />
           </div>
         </div>
       ))}
