@@ -468,6 +468,19 @@ export async function createForm(db: D1Database, input: FormCreateInput): Promis
   return mapForm(row!);
 }
 
+/** slug未指定時の自動生成: `<base>-x7k2` 形式で衝突しないものを返す */
+export async function generateUniqueSlug(db: D1Database, base: string): Promise<string> {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    const suffix = Array.from(bytes, (b) => chars[b % chars.length]).join('');
+    const slug = `${base}-${suffix}`;
+    if (!(await getFormBySlug(db, slug))) return slug;
+  }
+  throw new Error('スラッグの自動生成に失敗しました');
+}
+
 export async function getFormBySlug(db: D1Database, slug: string): Promise<Form | null> {
   const row = await db.prepare('SELECT * FROM forms WHERE slug = ?').bind(slug).first<FormRow>();
   return row ? mapForm(row) : null;

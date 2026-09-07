@@ -175,7 +175,11 @@ export function registerTools(server: McpServer, env: Env): void {
       description: 'フォームを作成する (kind: judge=審査員フォーム, peer=メンバー相互評価フォーム)',
       inputSchema: {
         eventId: z.number().int(),
-        slug: z.string().regex(SLUG_RE, 'slugは半角英数字とハイフンのみ使用できます'),
+        slug: z
+          .string()
+          .regex(SLUG_RE, 'slugは半角英数字とハイフンのみ使用できます')
+          .optional()
+          .describe('回答URL(/f/<slug>)の識別子。省略時は自動生成'),
         title: z.string().min(1).max(200),
         descriptionMd: z.string().max(10000).optional(),
         kind: formKindSchema,
@@ -184,8 +188,12 @@ export function registerTools(server: McpServer, env: Env): void {
     safe(async ({ eventId, slug, title, descriptionMd, kind }) => {
       const event = await db.getEvent(database, eventId);
       if (!event) throw new Error('イベントが見つかりません');
-      const existing = await db.getFormBySlug(database, slug);
-      if (existing) throw new Error('このslugは既に使用されています');
+      if (slug) {
+        const existing = await db.getFormBySlug(database, slug);
+        if (existing) throw new Error('このslugは既に使用されています');
+      } else {
+        slug = await db.generateUniqueSlug(database, kind);
+      }
       const form = await db.createForm(database, { eventId, slug, title, descriptionMd: descriptionMd ?? '', kind });
       return jsonResult(form);
     })

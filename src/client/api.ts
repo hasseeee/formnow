@@ -264,7 +264,8 @@ export function saveRespondents(
 
 export interface CreateFormInput {
   eventId: number;
-  slug: string;
+  /** 省略時はサーバー側で自動生成 */
+  slug?: string;
   title: string;
   descriptionMd: string;
   kind: FormKind;

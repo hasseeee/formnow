@@ -50,7 +50,7 @@ const respondentsSchema = z.object({ respondents: z.array(respondentItemSchema).
 
 const createFormSchema = z.object({
   eventId: z.number().int(),
-  slug: z.string().regex(SLUG_RE),
+  slug: z.string().regex(SLUG_RE).optional(),
   title: z.string().min(1).max(200),
   descriptionMd: z.string().max(10000).default(''),
   kind: z.enum(['judge', 'peer']),
@@ -177,9 +177,14 @@ adminRoutes.post('/forms', async (c) => {
   if (!parsed.success) return c.json<ApiError>({ error: 'invalid request body' }, 400);
   const event = await db.getEvent(c.env.DB, parsed.data.eventId);
   if (!event) return c.json<ApiError>({ error: 'event not found' }, 400);
-  const existing = await db.getFormBySlug(c.env.DB, parsed.data.slug);
-  if (existing) return c.json<ApiError>({ error: 'slug already exists' }, 409);
-  const form = await db.createForm(c.env.DB, parsed.data);
+  let slug = parsed.data.slug;
+  if (slug) {
+    const existing = await db.getFormBySlug(c.env.DB, slug);
+    if (existing) return c.json<ApiError>({ error: 'slug already exists' }, 409);
+  } else {
+    slug = await db.generateUniqueSlug(c.env.DB, parsed.data.kind);
+  }
+  const form = await db.createForm(c.env.DB, { ...parsed.data, slug });
   return c.json(form, 201);
 });
 

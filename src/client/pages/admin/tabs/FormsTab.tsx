@@ -28,16 +28,22 @@ export default function FormsTab({ eventId, forms, onSaved }: Props) {
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
-    if (!slug.trim() || !title.trim()) return;
+    if (!title.trim()) return;
     const trimmedSlug = slug.trim();
-    if (!SLUG_PATTERN.test(trimmedSlug)) {
+    if (trimmedSlug && !SLUG_PATTERN.test(trimmedSlug)) {
       setError('スラッグは半角英小文字・数字・ハイフンのみ使用できます。');
       return;
     }
     setCreating(true);
     setError(null);
     try {
-      await createForm({ eventId, slug: trimmedSlug, title: title.trim(), descriptionMd: '', kind });
+      await createForm({
+        eventId,
+        slug: trimmedSlug || undefined,
+        title: title.trim(),
+        descriptionMd: '',
+        kind,
+      });
       setSlug('');
       setTitle('');
       toast.show('フォームを作成しました');
@@ -110,7 +116,7 @@ export default function FormsTab({ eventId, forms, onSaved }: Props) {
         <input
           type="text"
           className="text-input"
-          placeholder="スラッグ（URL用, 例: judge-2026）"
+          placeholder="URL名（空欄で自動生成）"
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
         />
