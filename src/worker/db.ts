@@ -458,6 +458,7 @@ export interface FormPatch {
   status?: FormStatus;
   sheetId?: string | null;
   slug?: string;
+  kind?: FormKind;
 }
 
 export async function createForm(db: D1Database, input: FormCreateInput): Promise<Form> {
@@ -518,6 +519,10 @@ export async function updateForm(db: D1Database, id: number, patch: FormPatch): 
   if (patch.slug !== undefined) {
     fields.push('slug = ?');
     values.push(patch.slug);
+  }
+  if (patch.kind !== undefined) {
+    fields.push('kind = ?');
+    values.push(patch.kind);
   }
   if (fields.length === 0) return getFormById(db, id);
   const row = await db

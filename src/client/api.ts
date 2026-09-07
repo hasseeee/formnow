@@ -288,7 +288,7 @@ export function deleteForm(id: number): Promise<void> {
 }
 
 export type UpdateFormPatch = Partial<
-  Pick<Form, 'title' | 'descriptionMd' | 'status' | 'sheetId'>
+  Pick<Form, 'title' | 'descriptionMd' | 'status' | 'sheetId' | 'kind'>
 >;
 
 export function updateForm(id: number, patch: UpdateFormPatch): Promise<Form> {

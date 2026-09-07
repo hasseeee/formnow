@@ -1,42 +1,44 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import type { FormSummary, Question } from '../../../shared/types';
+import type { FormSummary, Question } from '../../../../shared/types';
 import {
   ApiRequestError,
   downloadFormCsv,
-  getForm,
   getFormResponses,
   getFormSummary,
   syncSheets,
   type FormResponsesView,
-} from '../../api';
-import Markdown from '../../components/Markdown';
-import { useToast } from '../../components/Toast';
-import { formatScore } from '../../lib/format';
+} from '../../../api';
+import Markdown from '../../../components/Markdown';
+import { useToast } from '../../../components/Toast';
+import { formatScore } from '../../../lib/format';
 
 function stripMarkdown(source: string): string {
   return source.replace(/[#*_`>[\]()~-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export default function FormResultsPage() {
-  const { id } = useParams<{ id: string }>();
-  const formId = Number(id);
-  const toast = useToast();
+const SCORABLE_TYPES = new Set(['rating', 'number', 'choice', 'checkbox']);
 
+interface Props {
+  formId: number;
+  questions: Question[];
+}
+
+export default function ResponsesPanel({ formId, questions }: Props) {
+  const toast = useToast();
   const [summary, setSummary] = useState<FormSummary | null>(null);
   const [responses, setResponses] = useState<FormResponsesView | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setError(null);
-    Promise.all([getFormSummary(formId), getFormResponses(formId), getForm(formId)])
-      .then(([s, r, f]) => {
+    setSummary(null);
+    setResponses(null);
+    Promise.all([getFormSummary(formId), getFormResponses(formId)])
+      .then(([s, r]) => {
         setSummary(s);
         setResponses(r);
-        setQuestions(f.questions);
       })
       .catch((err: unknown) =>
         setError(err instanceof ApiRequestError ? err.message : '読み込みに失敗しました。'),
@@ -79,15 +81,13 @@ export default function FormResultsPage() {
   if (error) return <p className="form-error">{error}</p>;
   if (!summary || !responses) return <p className="muted">読み込み中…</p>;
 
-  const SCORABLE_TYPES = new Set(['rating', 'number', 'choice', 'checkbox']);
   const questionIds = [...questions]
     .filter((q) => SCORABLE_TYPES.has(q.type))
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((q) => q.id);
 
   return (
-    <div className="admin-page">
-      <h1>結果: {summary.formSlug}</h1>
+    <div className="responses-panel">
       <div className="results-actions">
         <button type="button" className="btn btn-secondary" onClick={handleExport}>
           CSVダウンロード
@@ -123,9 +123,7 @@ export default function FormResultsPage() {
                   <td>{formatScore(t.avg)}</td>
                   <td>{formatScore(t.sum)}</td>
                   {questionIds.map((qid) => (
-                    <td key={qid}>
-                      {formatScore(t.questionAvgs[qid] ?? null)}
-                    </td>
+                    <td key={qid}>{formatScore(t.questionAvgs[qid] ?? null)}</td>
                   ))}
                 </tr>
               ))}

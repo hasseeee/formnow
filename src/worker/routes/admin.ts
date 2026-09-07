@@ -62,6 +62,7 @@ const patchFormSchema = z.object({
   status: z.enum(['draft', 'open', 'closed']).optional(),
   sheetId: z.string().max(200).nullable().optional(),
   slug: z.string().regex(SLUG_RE).optional(),
+  kind: z.enum(['judge', 'peer']).optional(),
 });
 
 const optionSchema = z.object({

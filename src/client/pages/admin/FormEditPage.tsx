@@ -1,116 +1,272 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ApiRequestError, getForm, saveQuestions, updateForm, type FormDetailView, type QuestionInput } from '../../api';
-import Markdown from '../../components/Markdown';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import type { Form, FormStatus, QuestionType } from '../../../shared/types';
+import {
+  ApiRequestError,
+  getForm,
+  saveQuestions,
+  updateForm,
+  type FormDetailView,
+  type QuestionInput,
+} from '../../api';
+import SaveStatusIndicator, { type SaveStatus } from '../../components/SaveStatusIndicator';
 import { useToast } from '../../components/Toast';
-import QuestionEditor from './QuestionEditor';
+import QuestionsPanel, { type LocalQuestion } from './editor/QuestionsPanel';
+import ResponsesPanel from './editor/ResponsesPanel';
+import SettingsPopover from './editor/SettingsPopover';
+
+const STATUS_OPTIONS: { value: FormStatus; label: string }[] = [
+  { value: 'draft', label: '下書き' },
+  { value: 'open', label: '公開中' },
+  { value: 'closed', label: '締切' },
+];
+
+let clientKeySeq = 0;
+function nextClientKey(): string {
+  clientKeySeq += 1;
+  return `q-${Date.now()}-${clientKeySeq}`;
+}
+
+function toLocalQuestion(q: QuestionInput): LocalQuestion {
+  return { ...q, clientKey: nextClientKey() };
+}
 
 export default function FormEditPage() {
   const { id } = useParams<{ id: string }>();
   const formId = Number(id);
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'responses' ? 'responses' : 'questions';
 
   const [data, setData] = useState<FormDetailView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [descriptionMd, setDescriptionMd] = useState('');
-  const [savingMeta, setSavingMeta] = useState(false);
+  const savedTitleRef = useRef('');
+  const savedDescRef = useRef('');
 
-  const [questions, setQuestions] = useState<QuestionInput[]>([]);
-  const [savingQuestions, setSavingQuestions] = useState(false);
+  const [questions, setQuestions] = useState<LocalQuestion[]>([]);
+  const questionsRef = useRef<LocalQuestion[]>([]);
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
 
-  const load = () => {
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const savingQuestionsRef = useRef(false);
+  const pendingResaveRef = useRef(false);
+  const debounceRef = useRef<number | null>(null);
+  const retryRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
     setError(null);
     getForm(formId)
       .then((d) => {
         setData(d);
         setTitle(d.form.title);
         setDescriptionMd(d.form.descriptionMd);
+        savedTitleRef.current = d.form.title;
+        savedDescRef.current = d.form.descriptionMd;
         setQuestions(
           [...d.questions]
             .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((q) => ({
-              id: q.id,
-              sortOrder: q.sortOrder,
-              type: q.type,
-              labelMd: q.labelMd,
-              options: q.options,
-              maxScore: q.maxScore,
-              weight: q.weight,
-              required: q.required,
-            })),
+            .map((q) =>
+              toLocalQuestion({
+                id: q.id,
+                sortOrder: q.sortOrder,
+                type: q.type,
+                labelMd: q.labelMd,
+                options: q.options,
+                maxScore: q.maxScore,
+                weight: q.weight,
+                required: q.required,
+              }),
+            ),
         );
       })
       .catch((err: unknown) =>
         setError(err instanceof ApiRequestError ? err.message : '読み込みに失敗しました。'),
       );
-  };
+  }, [formId]);
 
-  useEffect(load, [formId]);
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    };
+  }, []);
 
-  const handleSaveMeta = async () => {
-    setSavingMeta(true);
+  // ---------- タイトル/説明文の自動保存（blur時） ----------
+
+  const handleTitleBlur = useCallback(async () => {
+    if (title === savedTitleRef.current) return;
+    const value = title;
+    setSaveStatus('saving');
     try {
-      await updateForm(formId, { title, descriptionMd });
-      toast.show('フォーム情報を保存しました');
-      load();
-    } catch (err) {
-      toast.show(err instanceof ApiRequestError ? err.message : '保存に失敗しました。', 'error');
-    } finally {
-      setSavingMeta(false);
+      await updateForm(formId, { title: value });
+      savedTitleRef.current = value;
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('error');
+      retryRef.current = () => void handleTitleBlur();
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formId, title]);
 
-  const addQuestion = () => {
+  const handleDescBlur = useCallback(async () => {
+    if (descriptionMd === savedDescRef.current) return;
+    const value = descriptionMd;
+    setSaveStatus('saving');
+    try {
+      await updateForm(formId, { descriptionMd: value });
+      savedDescRef.current = value;
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('error');
+      retryRef.current = () => void handleDescBlur();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formId, descriptionMd]);
+
+  // ---------- 質問の自動保存（800msデバウンス + in-flightガード） ----------
+
+  const saveQuestionsNow = useCallback(async () => {
+    if (savingQuestionsRef.current) {
+      pendingResaveRef.current = true;
+      return;
+    }
+    const snapshot = questionsRef.current;
+    const toSave = snapshot.filter((q) => q.labelMd.trim() !== '');
+    if (toSave.length === 0) {
+      setSaveStatus('saved');
+      return;
+    }
+    savingQuestionsRef.current = true;
+    setSaveStatus('saving');
+    const keysInOrder = toSave.map((q) => q.clientKey);
+    const payload: QuestionInput[] = toSave.map((q, i) => ({
+      id: q.id,
+      sortOrder: i,
+      type: q.type,
+      labelMd: q.labelMd,
+      options: q.options,
+      maxScore: q.maxScore,
+      weight: q.weight,
+      required: q.required,
+    }));
+    try {
+      const saved = await saveQuestions(formId, payload);
+      // 保存後に付与されたidを、id以外はローカルを正としてマージする
+      setQuestions((prev) => {
+        const idByKey = new Map<string, number>();
+        saved.forEach((sq, i) => {
+          const key = keysInOrder[i];
+          if (key !== undefined) idByKey.set(key, sq.id);
+        });
+        return prev.map((q) =>
+          q.id === undefined && idByKey.has(q.clientKey) ? { ...q, id: idByKey.get(q.clientKey) } : q,
+        );
+      });
+      setSaveStatus('saved');
+      retryRef.current = null;
+    } catch {
+      setSaveStatus('error');
+      retryRef.current = () => void saveQuestionsNow();
+    } finally {
+      savingQuestionsRef.current = false;
+      if (pendingResaveRef.current) {
+        pendingResaveRef.current = false;
+        void saveQuestionsNow();
+      }
+    }
+  }, [formId]);
+
+  const scheduleQuestionsSave = useCallback(() => {
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      debounceRef.current = null;
+      void saveQuestionsNow();
+    }, 800);
+  }, [saveQuestionsNow]);
+
+  const handleQuestionChange = useCallback(
+    (clientKey: string, patch: Partial<QuestionInput>) => {
+      setQuestions((prev) => prev.map((q) => (q.clientKey === clientKey ? { ...q, ...patch } : q)));
+      scheduleQuestionsSave();
+    },
+    [scheduleQuestionsSave],
+  );
+
+  const handleAddQuestion = useCallback(() => {
     setQuestions((prev) => [
       ...prev,
-      {
+      toLocalQuestion({
         sortOrder: prev.length,
-        type: 'rating',
+        type: 'rating' as QuestionType,
         labelMd: '',
         options: null,
         maxScore: 5,
         weight: 1,
         required: true,
-      },
+      }),
     ]);
-  };
+    // 質問文が空のうちは保存対象外なので、ここではスケジュールしない
+  }, []);
 
-  const updateQuestion = (index: number, patch: Partial<QuestionInput>) => {
-    setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
-  };
+  const handleRemoveQuestion = useCallback(
+    (clientKey: string) => {
+      setQuestions((prev) => prev.filter((q) => q.clientKey !== clientKey));
+      scheduleQuestionsSave();
+    },
+    [scheduleQuestionsSave],
+  );
 
-  const removeQuestion = (index: number) => {
-    setQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
+  const handleMoveQuestion = useCallback(
+    (clientKey: string, dir: -1 | 1) => {
+      setQuestions((prev) => {
+        const index = prev.findIndex((q) => q.clientKey === clientKey);
+        if (index === -1) return prev;
+        const target = index + dir;
+        if (target < 0 || target >= prev.length) return prev;
+        const next = [...prev];
+        [next[index], next[target]] = [next[target], next[index]];
+        return next;
+      });
+      scheduleQuestionsSave();
+    },
+    [scheduleQuestionsSave],
+  );
 
-  const moveQuestion = (index: number, dir: -1 | 1) => {
-    setQuestions((prev) => {
-      const next = [...prev];
-      const target = index + dir;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  };
+  const handleRetry = useCallback(() => {
+    retryRef.current?.();
+  }, []);
 
-  const handleSaveQuestions = async () => {
-    const emptyIndex = questions.findIndex((q) => q.labelMd.trim() === '');
-    if (emptyIndex !== -1) {
-      toast.show(`質問文が未入力の質問があります（${emptyIndex + 1}番目）`, 'error');
-      return;
-    }
-    setSavingQuestions(true);
+  // ---------- ステータス / 種別 / シート ----------
+
+  const handleStatusChange = async (status: FormStatus) => {
+    if (!data || status === data.form.status) return;
     try {
-      const payload = questions.map((q, i) => ({ ...q, sortOrder: i }));
-      await saveQuestions(formId, payload);
-      toast.show('質問を保存しました');
-      load();
+      const updated = await updateForm(formId, { status });
+      setData((prev) => (prev ? { ...prev, form: updated } : prev));
+      toast.show(
+        status === 'open' ? '公開しました' : status === 'closed' ? '締め切りました' : '下書きに戻しました',
+      );
     } catch (err) {
-      toast.show(err instanceof ApiRequestError ? err.message : '保存に失敗しました。', 'error');
-    } finally {
-      setSavingQuestions(false);
+      toast.show(err instanceof ApiRequestError ? err.message : '更新に失敗しました。', 'error');
+    }
+  };
+
+  const handleFormUpdated = (updated: Form) => {
+    setData((prev) => (prev ? { ...prev, form: updated } : prev));
+  };
+
+  const handleShare = async () => {
+    if (!data) return;
+    const url = `${window.location.origin}/f/${data.form.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.show('URLをコピーしました');
+    } catch {
+      toast.show('コピーに失敗しました。手動でコピーしてください。', 'error');
     }
   };
 
@@ -118,73 +274,71 @@ export default function FormEditPage() {
   if (!data) return <p className="muted">読み込み中…</p>;
 
   return (
-    <div className="admin-page">
-      <p>
-        <Link to={`/admin/events/${data.form.eventId}`}>← イベントに戻る</Link>
-      </p>
-      <h1>フォーム編集</h1>
-
-      <section className="card form-meta-editor">
-        <label>タイトル</label>
-        <input
-          type="text"
-          className="text-input"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <label>説明文（Markdown）</label>
-        <div className="markdown-editor">
-          <textarea
-            className="textarea-input"
-            rows={6}
-            value={descriptionMd}
-            onChange={(e) => setDescriptionMd(e.target.value)}
-          />
-          <div className="markdown-preview">
-            <p className="muted">プレビュー</p>
-            <Markdown source={descriptionMd} />
+    <div className="admin-page form-editor-page">
+      <div className="editor-header">
+        <Link to={`/admin/events/${data.form.eventId}`} className="editor-back-link">
+          ← イベントに戻る
+        </Link>
+        <div className="editor-header-actions">
+          <SaveStatusIndicator status={saveStatus} onRetry={handleRetry} />
+          <div className="status-segment" role="group" aria-label="公開状態">
+            {STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`status-segment-btn${data.form.status === opt.value ? ' active' : ''}`}
+                onClick={() => handleStatusChange(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
+          <SettingsPopover form={data.form} onUpdated={handleFormUpdated} />
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleShare}>
+            共有
+          </button>
         </div>
+      </div>
+      {data.form.status !== 'open' && (
+        <p className="small-hint editor-share-hint">公開すると回答できます</p>
+      )}
+
+      <nav className="tab-nav editor-tab-nav">
         <button
           type="button"
-          className="btn btn-primary"
-          onClick={handleSaveMeta}
-          disabled={savingMeta}
+          className={`tab-button${activeTab === 'questions' ? ' active' : ''}`}
+          onClick={() => setSearchParams({}, { replace: true })}
         >
-          {savingMeta ? '保存中…' : 'フォーム情報を保存'}
+          質問
         </button>
-      </section>
+        <button
+          type="button"
+          className={`tab-button${activeTab === 'responses' ? ' active' : ''}`}
+          onClick={() => setSearchParams({ tab: 'responses' }, { replace: true })}
+        >
+          回答
+        </button>
+      </nav>
 
-      <section className="question-builder">
-        <h2>質問</h2>
-        {questions.map((q, i) => (
-          <QuestionEditor
-            key={q.id ?? `new-${i}`}
-            question={q}
-            onChange={(patch) => updateQuestion(i, patch)}
-            onRemove={() => removeQuestion(i)}
-            onMoveUp={() => moveQuestion(i, -1)}
-            onMoveDown={() => moveQuestion(i, 1)}
-            canMoveUp={i > 0}
-            canMoveDown={i < questions.length - 1}
+      <div className="tab-panel">
+        {activeTab === 'questions' ? (
+          <QuestionsPanel
+            title={title}
+            descriptionMd={descriptionMd}
+            onTitleChange={setTitle}
+            onTitleBlur={handleTitleBlur}
+            onDescChange={setDescriptionMd}
+            onDescBlur={handleDescBlur}
+            questions={questions}
+            onQuestionChange={handleQuestionChange}
+            onAddQuestion={handleAddQuestion}
+            onRemoveQuestion={handleRemoveQuestion}
+            onMoveQuestion={handleMoveQuestion}
           />
-        ))}
-        {questions.length === 0 && <p className="muted">質問がまだありません。</p>}
-        <div className="editable-list-footer">
-          <button type="button" className="btn btn-secondary" onClick={addQuestion}>
-            ＋ 質問を追加
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSaveQuestions}
-            disabled={savingQuestions}
-          >
-            {savingQuestions ? '保存中…' : '質問を保存'}
-          </button>
-        </div>
-        <p className="small-hint">一覧から削除した項目は保存時にデータベースからも削除されます</p>
-      </section>
+        ) : (
+          <ResponsesPanel formId={formId} questions={data.questions} />
+        )}
+      </div>
     </div>
   );
 }

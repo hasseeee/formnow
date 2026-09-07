@@ -735,41 +735,160 @@ label {
   margin-top: 4px;
 }
 
-.forms-tab .form-create {
-  align-items: center;
+.create-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
 }
 
-.form-list {
-  list-style: none;
-  padding: 0;
-  margin: 16px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.form-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
 }
 
-.form-list-item {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.form-card {
+  cursor: pointer;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.form-list-main {
+.form-card:hover,
+.form-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+  outline: none;
+}
+
+.form-card-main {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.form-list-title {
+.form-card-title {
   font-weight: 700;
 }
 
-.form-list-actions {
+.form-card-url {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.form-card-actions {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.kebab-menu {
+  position: relative;
+}
+
+.kebab-trigger {
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.kebab-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  z-index: 20;
+  min-width: 100px;
+  overflow: hidden;
+}
+
+.kebab-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.kebab-item:hover {
+  background: #f0f1f5;
+}
+
+.kebab-item-danger {
+  color: var(--danger);
+}
+
+.kebab-item-danger:hover {
+  background: var(--danger-soft);
+}
+
+/* ---------- 折りたたみセクション ---------- */
+
+.accordion-section {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+}
+
+.accordion-summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 12px 4px;
+  list-style: none;
+}
+
+.accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 1em;
+  margin-right: 6px;
+  color: var(--accent);
+  transition: transform 0.15s ease;
+}
+
+.accordion-section[open] > .accordion-summary::before {
+  transform: rotate(90deg);
+}
+
+.accordion-body {
+  padding: 4px 4px 12px;
+}
+
+.subsection {
+  margin-bottom: 24px;
+}
+
+.subsection:last-child {
+  margin-bottom: 0;
+}
+
+.subsection h3 {
+  margin-bottom: 10px;
 }
 
 .status-badge {
@@ -794,11 +913,31 @@ label {
   color: var(--danger);
 }
 
-.question-builder {
-  margin-top: 24px;
+.questions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.question-cards {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.question-card-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.qcard-empty-hint {
+  margin: 2px 4px 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.add-question-btn {
+  align-self: flex-start;
 }
 
 .question-editor {
@@ -846,15 +985,50 @@ label {
   max-width: 120px;
 }
 
-.form-meta-editor label:first-of-type {
-  margin-top: 0;
+.form-title-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 4px solid var(--accent);
 }
 
-.markdown-editor {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+.form-title-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.form-title-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.form-desc-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.98rem;
+  color: var(--text);
+  padding: 4px;
+  resize: vertical;
+  min-height: 2.6em;
+}
+
+.form-title-input:focus,
+.form-desc-input:focus {
+  outline: none;
+  background: var(--accent-soft);
+}
+
+.form-desc-preview {
+  margin-top: 0;
 }
 
 .markdown-preview {
@@ -947,6 +1121,128 @@ label {
   font-size: 0.82rem;
 }
 
+/* ---------- フォームエディタ ---------- */
+
+.form-editor-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.editor-back-link {
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.editor-share-hint {
+  margin: 0 0 12px;
+  text-align: right;
+}
+
+.save-indicator {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.save-indicator-saving {
+  color: var(--text-muted);
+}
+
+.save-indicator-saved {
+  color: var(--success);
+}
+
+.save-indicator-error {
+  color: var(--danger);
+}
+
+.save-retry-btn {
+  padding: 0;
+  font-size: 0.82rem;
+}
+
+.status-segment {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.status-segment-btn {
+  background: var(--surface);
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.status-segment-btn:last-child {
+  border-right: none;
+}
+
+.status-segment-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.editor-tab-nav {
+  margin-top: 8px;
+}
+
+.settings-popover-wrap {
+  position: relative;
+}
+
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: transparent;
+}
+
+.settings-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 260px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  z-index: 31;
+  text-align: left;
+}
+
+.settings-popover label:first-child {
+  margin-top: 0;
+}
+
 /* ---------- レスポンシブ（タブレット以上） ---------- */
 
 @media (min-width: 640px) {
@@ -958,8 +1254,8 @@ label {
     padding-top: 32px;
   }
 
-  .markdown-editor {
-    grid-template-columns: 1fr 1fr;
+  .form-cards {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .eval-actions {

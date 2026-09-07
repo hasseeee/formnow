@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ApiRequestError, getEventDetail, type EventDetailView } from '../../api';
+import CollapsibleSection from '../../components/CollapsibleSection';
+import FormsSection from './FormsSection';
 import FormulaResultsPanel from './FormulaResultsPanel';
-import FormsTab from './tabs/FormsTab';
 import FormulasTab from './tabs/FormulasTab';
 import RespondentsTab from './tabs/RespondentsTab';
 import TeamsTab from './tabs/TeamsTab';
-
-type TabKey = 'teams' | 'respondents' | 'forms' | 'formulas';
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'teams', label: 'チーム' },
-  { key: 'respondents', label: '回答者' },
-  { key: 'forms', label: 'フォーム' },
-  { key: 'formulas', label: '計算式' },
-];
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +14,6 @@ export default function EventDetailPage() {
 
   const [data, setData] = useState<EventDetailView | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabKey>('teams');
   const [refreshKey, setRefreshKey] = useState(0);
 
   const reload = useCallback(() => {
@@ -48,39 +39,34 @@ export default function EventDetailPage() {
     <div className="admin-page">
       <h1>{data.event.name}</h1>
 
-      <nav className="tab-nav">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={`tab-button${tab === t.key ? ' active' : ''}`}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <FormsSection eventId={eventId} forms={data.forms} onChanged={reload} />
 
-      <div className="tab-panel">
-        {tab === 'teams' && <TeamsTab eventId={eventId} teams={data.teams} onSaved={handleSaved} />}
-        {tab === 'respondents' && (
+      <CollapsibleSection title="チームと回答者" defaultOpen={data.teams.length === 0}>
+        <div className="subsection">
+          <h3>チーム</h3>
+          <TeamsTab eventId={eventId} teams={data.teams} onSaved={handleSaved} />
+        </div>
+        <div className="subsection">
+          <h3>回答者</h3>
           <RespondentsTab
             eventId={eventId}
             respondents={data.respondents}
             teams={data.teams}
             onSaved={handleSaved}
           />
-        )}
-        {tab === 'forms' && <FormsTab eventId={eventId} forms={data.forms} onSaved={reload} />}
-        {tab === 'formulas' && (
-          <FormulasTab eventId={eventId} formulas={data.formulas} onSaved={handleSaved} />
-        )}
-      </div>
+        </div>
+      </CollapsibleSection>
 
-      <section className="cross-summary">
-        <h2>横断集計</h2>
-        <FormulaResultsPanel eventId={eventId} refreshKey={refreshKey} />
-      </section>
+      <CollapsibleSection title="横断集計と計算式">
+        <div className="subsection">
+          <h3>計算式</h3>
+          <FormulasTab eventId={eventId} formulas={data.formulas} onSaved={handleSaved} />
+        </div>
+        <div className="subsection">
+          <h3>横断集計</h3>
+          <FormulaResultsPanel eventId={eventId} refreshKey={refreshKey} />
+        </div>
+      </CollapsibleSection>
     </div>
   );
 }
