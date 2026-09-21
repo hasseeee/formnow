@@ -1,0 +1,44 @@
+name: バグ報告
+description: 動作がおかしい・エラーが出る
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 何が起きたか
+      description: 期待した動作と、実際の動作を書いてください
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      placeholder: |
+        1. 管理画面で…
+        2. …を押す
+        3. …になる
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: どの画面か
+      options:
+        - 回答画面（/f/…）
+        - 管理画面
+        - 集計・計算式
+        - スプレッドシート連携
+        - MCP（Claude連携）
+        - その他
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 環境
+      placeholder: 例) iPhone 15 / Safari、Windows / Chrome
+  - type: textarea
+    id: extra
+    attributes:
+      label: スクリーンショット・補足
+      description: 回答者の名前など個人情報が写り込まないよう注意してください

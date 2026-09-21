@@ -1,0 +1,27 @@
+name: 機能要望・改善案
+description: こうなったら便利、を提案する
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 困っていること・背景
+      description: 解決策より先に「何に困っているか」を書いてください
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: 提案
+    validations:
+      required: true
+  - type: textarea
+    id: alt
+    attributes:
+      label: 代わりの案・今やっている回避策
+  - type: checkboxes
+    id: will
+    attributes:
+      label: 実装について
+      options:
+        - label: 自分で実装してみたい
