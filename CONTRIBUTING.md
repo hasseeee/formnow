@@ -26,6 +26,9 @@ npm run dev                # http://localhost:5173
 ```
 
 `http://localhost:5173/admin` を開き、`dev-admin-token` でログインできれば準備完了です。
+
+> **`db:migrate:local` が `_cf_ALARM has 3 columns` というエラーで落ちるとき**
+> `wrangler` と `@cloudflare/vite-plugin` の版がずれています。`git pull` のあと `npm ci` をやり直してください。この2つは必ずセットで更新します。
 コードの全体像は [docs/architecture.md](docs/architecture.md) を読んでください。
 
 ## 変更の流れ

@@ -9,7 +9,7 @@
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["@cloudflare/workers-types/2023-07-01", "vitest/globals"]
+    "types": ["@cloudflare/workers-types", "vitest/globals"]
   },
   "include": ["src/worker", "src/shared", "tests"]
 }
