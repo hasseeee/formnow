@@ -10,7 +10,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.route('/api/forms', publicRoutes);
 app.route('/api/admin', adminRoutes);
 
-// MCP (Streamable HTTP) — wave2で実装。現状はプレースホルダー。
+// MCP (Streamable HTTP)。Bearer MCP_TOKEN で保護
 app.all('/mcp', handleMcp);
 app.all('/mcp/*', handleMcp);
 
