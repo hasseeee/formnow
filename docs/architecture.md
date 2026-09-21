@@ -42,7 +42,7 @@ src/
     pages/admin/        管理画面。FormEditPage.tsx がGoogleフォーム風のエディタ
     components/         共通部品（Markdown表示、⋯メニュー、トーストなど）
 migrations/           DBスキーマ。連番のSQLファイル
-tests/                logic/ を中心とした単体テスト（Vitest）
+tests/                単体テスト（logic/ の純関数）と、integration/ の結合テスト（APIを実SQLの上で動かす）
 ```
 
 ## データの形

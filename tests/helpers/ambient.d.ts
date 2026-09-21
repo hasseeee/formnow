@@ -1,0 +1,19 @@
+// テスト専用の最小限の型宣言。@types/node を入れると Workers の型と衝突するため、使う分だけ宣言する。
+declare module 'node:sqlite' {
+  export interface StatementSync {
+    all(...params: unknown[]): Record<string, unknown>[];
+    get(...params: unknown[]): Record<string, unknown> | undefined;
+    run(...params: unknown[]): { changes: number | bigint; lastInsertRowid: number | bigint };
+  }
+  export class DatabaseSync {
+    constructor(path: string);
+    exec(sql: string): void;
+    prepare(sql: string): StatementSync;
+    close(): void;
+  }
+}
+
+declare module '*.sql?raw' {
+  const content: string;
+  export default content;
+}
