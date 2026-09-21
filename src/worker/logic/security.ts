@@ -7,7 +7,9 @@
  * この実装は長さが一致する限り全文字を必ず走査し、XORの累積で差分を判定する。
  * (長さが異なる場合のみ早期return するが、これは秘密情報の中身とは無関係な情報)
  */
-export function timingSafeEqual(a: string, b: string): boolean {
+export function timingSafeEqual(a: string, b: string | undefined): boolean {
+  // シークレット未設定（undefined/空）のときは必ず不一致にする（fail closed）
+  if (typeof b !== 'string' || b.length === 0) return false;
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) {

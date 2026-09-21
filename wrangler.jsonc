@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "formnow",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "6be9b29b-d004-4930-b29d-6d30847cc3c2",
       "migrations_dir": "migrations"
     }
   ],

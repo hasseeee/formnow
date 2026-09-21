@@ -4,7 +4,6 @@ import { timingSafeEqual } from '../src/worker/logic/security';
 describe('timingSafeEqual', () => {
   it('同じ文字列はtrueを返す', () => {
     expect(timingSafeEqual('secret-token', 'secret-token')).toBe(true);
-    expect(timingSafeEqual('', '')).toBe(true);
   });
 
   it('異なる文字列はfalseを返す', () => {
@@ -18,5 +17,14 @@ describe('timingSafeEqual', () => {
 
   it('末尾だけ異なる文字列もfalseを返す', () => {
     expect(timingSafeEqual('abcdef', 'abcdeg')).toBe(false);
+  });
+});
+
+describe('timingSafeEqual (シークレット未設定)', () => {
+  it('比較対象がundefinedなら常にfalse', () => {
+    expect(timingSafeEqual('anything', undefined)).toBe(false);
+  });
+  it('比較対象が空文字なら常にfalse', () => {
+    expect(timingSafeEqual('', '')).toBe(false);
   });
 });
