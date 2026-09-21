@@ -68,6 +68,25 @@ npm run build   # 本番ビルド
 この3つはCIでも自動で走ります。加えて、**`npm run dev` で実際に画面を触って確認**してください。型とテストが通っても画面が壊れていることはあります。
 UIを変えたPRにはスクリーンショットを貼ってください。
 
+## テストの書き方
+
+テストは2種類あります。どちらも `npm test` で走ります。
+
+- **単体テスト**（`tests/*.test.ts`）: `src/worker/logic/` の純関数が対象。計算を変えたら必ずここを足します。
+- **結合テスト**（`tests/integration/`）: APIを実際のSQLの上で動かします。HTTPサーバーもCloudflareも不要で、Node組み込みのSQLite（インメモリ）を使うので一瞬で終わります。
+
+結合テストは `createTestClient()` と `seed()` を使うと数行で書けます。
+
+```ts
+const client = createTestClient();
+const f = await seed(client);            // チーム3つ・審査員2人・メンバー2人・フォーム2つ
+const res = await submitJudge(client, f, f.judges[0].id, f.teams.a.id, 8, 7);
+expect(res.status).toBe(200);
+```
+
+APIの入力検証、認証、削除を伴う処理を変えたときは、結合テストを足してください。
+実行時に出る `ExperimentalWarning: SQLite is an experimental feature` は無視して構いません。
+
 ## コードの約束ごと
 
 - **計算ロジックは純関数にして `src/worker/logic/` に置き、テストを書く。** 採点・集計・計算式・CSVなど、結果が順位に影響する処理は特に重要です。DBやHTTPに依存させないでください。
