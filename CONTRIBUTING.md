@@ -74,6 +74,7 @@ npm run build   # 本番ビルド
 この4つはCIでも自動で走ります（フォーマットはCIでは `npm run format:check` で、整形されていないファイルがあると失敗します）。加えて、**`npm run dev` で実際に画面を触って確認**してください。型とテストが通っても画面が壊れていることはあります。
 
 エディタで保存時に自動整形させておくと楽です。VS Code なら拡張 [Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)（`.vscode/extensions.json` で推奨済み）を入れて、設定で `editor.formatOnSave` を有効にしてください。
+
 UIを変えたPRにはスクリーンショットを貼ってください。
 
 ## テストの書き方

@@ -10,7 +10,9 @@ updates:
       # 片方だけ上げるとローカルのD1が開けなくなるので、必ずまとめて更新する
       cloudflare:
         patterns: ['wrangler', '@cloudflare/*']
+      # Prettier は minor 更新でも整形結果が変わることがあるので、まとめず単独のPRで受け取り、再整形コミットを載せてからマージする
       minor-and-patch:
+        exclude-patterns: ['prettier']
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
