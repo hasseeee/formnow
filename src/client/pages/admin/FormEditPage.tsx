@@ -80,6 +80,7 @@ export default function FormEditPage() {
                 maxScore: q.maxScore,
                 weight: q.weight,
                 required: q.required,
+                scaleLabels: q.scaleLabels,
               }),
             ),
         );
@@ -152,6 +153,7 @@ export default function FormEditPage() {
       maxScore: q.maxScore,
       weight: q.weight,
       required: q.required,
+      scaleLabels: q.scaleLabels,
     }));
     try {
       const saved = await saveQuestions(formId, payload);
@@ -209,6 +211,7 @@ export default function FormEditPage() {
         maxScore: 5,
         weight: 1,
         required: true,
+        scaleLabels: null,
       }),
     ]);
     // 質問文が空のうちは保存対象外なので、ここではスケジュールしない

@@ -189,6 +189,8 @@ export interface QuestionInput {
   maxScore: number | null;
   weight: number;
   required: boolean;
+  /** 必須にしておくと、質問をコピーする箇所で書き漏らしたときに型チェックで分かる */
+  scaleLabels: string[] | null;
 }
 
 export interface FormulaInput {

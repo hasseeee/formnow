@@ -72,6 +72,7 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
           maxScore: q.maxScore,
           weight: q.weight,
           required: q.required,
+          scaleLabels: q.scaleLabels,
         }));
       if (questionsPayload.length > 0) {
         await saveQuestions(newForm.id, questionsPayload);
