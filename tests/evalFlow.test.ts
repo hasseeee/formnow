@@ -83,6 +83,12 @@ describe('getSubmitMode', () => {
     expect(getSubmitMode(teams, new Set([1, 2, 3, 4]), 3)).toBe('edit-finish');
   });
 
+  it('チームが 1 つだけなら finish / edit-finish', () => {
+    const single = [{ id: 1 }];
+    expect(getSubmitMode(single, new Set(), 1)).toBe('finish');
+    expect(getSubmitMode(single, new Set([1]), 1)).toBe('edit-finish');
+  });
+
   it('completed に teams 外の ID（相互評価の自チーム）があっても結果が変わらない', () => {
     expect(getSubmitMode(teams, new Set([1, 99]), 2)).toBe('next');
     expect(getSubmitMode(teams, new Set([1, 2, 3, 99]), 4)).toBe('finish');
@@ -175,6 +181,11 @@ describe('buildAnswerSummary', () => {
     const [row] = buildAnswerSummary([teams[0]], qs, {});
     expect(row.items[0].label).toBe('質問2');
     expect(row.items[0].fullLabel).toBe('質問2');
+  });
+
+  it('質問が空なら items も空', () => {
+    const [row] = buildAnswerSummary([teams[0]], [], { 1: { 10: 5 } });
+    expect(row.items).toEqual([]);
   });
 
   it('回答が 1 件もないチームも行が出て、値がすべて null', () => {

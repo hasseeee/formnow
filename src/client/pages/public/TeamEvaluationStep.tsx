@@ -33,6 +33,8 @@ export default function TeamEvaluationStep({
   const [answers, setAnswers] = useState<AnswerMap>(() => ({ ...initialAnswers }));
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // エラーを出すたびに +1 する。同じ文言が続いても中身を作り直し、2 回目以降も読み上げられるようにする
+  const [formErrorSeq, setFormErrorSeq] = useState(0);
   // 検証に失敗するたびに +1 する。エラー表示が DOM に出た後の描画で最初のエラー項目へスクロールする
   const [scrollRequest, setScrollRequest] = useState(0);
   const questionsRef = useRef<HTMLDivElement>(null);
@@ -95,6 +97,7 @@ export default function TeamEvaluationStep({
     setFormError(null);
     if (!validate()) {
       setFormError('未入力の必須項目があります。すべての必須項目を入力してください。');
+      setFormErrorSeq((n) => n + 1);
       setScrollRequest((n) => n + 1);
       return;
     }
@@ -102,6 +105,7 @@ export default function TeamEvaluationStep({
       await onSubmit(answers);
     } catch (err) {
       setFormError(err instanceof ApiRequestError ? err.message : '保存に失敗しました。');
+      setFormErrorSeq((n) => n + 1);
     }
   };
 
@@ -121,11 +125,10 @@ export default function TeamEvaluationStep({
         ))}
         {questions.length === 0 && <p className="muted">このフォームには質問がありません。</p>}
       </div>
-      {formError && (
-        <p className="form-error" role="alert">
-          {formError}
-        </p>
-      )}
+      {/* 読み上げの対象として登録されるよう role="alert" の要素は常に描画し、中身だけ差し替える */}
+      <p className={formError ? 'form-alert form-error' : 'form-alert'} role="alert">
+        {formError && <span key={formErrorSeq}>{formError}</span>}
+      </p>
       <div className="eval-actions">
         {onPrev && (
           <button

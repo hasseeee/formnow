@@ -167,8 +167,9 @@ export default function FormFlow({
         setCompletedTeamIds(updatedCompleted);
         toast.show('保存しました');
 
-        // 今のチームより後ろの最初の未回答へ（なければ先頭から）。飛ばしたチームに毎回引き戻さない
-        const nextIndex = findNextTeamIndex(targetTeams, updatedCompleted, currentIndex);
+        // 保存したチームより後ろの最初の未回答へ（なければ先頭から）。飛ばしたチームに毎回引き戻さない
+        const fromIndex = targetTeams.findIndex((t) => t.id === team.id);
+        const nextIndex = findNextTeamIndex(targetTeams, updatedCompleted, fromIndex);
         if (nextIndex === -1) {
           setCurrentIndex(targetTeams.length);
           setPhase('done');
@@ -179,7 +180,7 @@ export default function FormFlow({
         setSubmitting(false);
       }
     },
-    [respondentId, onSubmit, completedTeamIds, targetTeams, currentIndex, toast],
+    [respondentId, onSubmit, completedTeamIds, targetTeams, toast],
   );
 
   const handlePrev = () => {

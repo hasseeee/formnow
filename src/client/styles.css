@@ -1353,7 +1353,8 @@ label {
 .team-step-list {
   list-style: none;
   margin: 0;
-  padding: 3px 3px 6px;
+  /* フォーカスの輪郭（2px + offset 2px）が overflow で欠けないだけの余白 */
+  padding: 4px 4px 6px;
   display: flex;
   gap: 8px;
   overflow-x: auto;
@@ -1464,4 +1465,9 @@ label {
   color: var(--text);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* role="alert" の要素は常に置いておき中身だけ差し替える。空のときは余白を出さない */
+.form-alert:empty {
+  margin: 0;
 }
