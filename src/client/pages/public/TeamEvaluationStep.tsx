@@ -51,9 +51,9 @@ export default function TeamEvaluationStep({
   }, [scrollRequest]);
 
   const setAnswer = (questionId: number, value: AnswerValue | null) => {
-    const next = { ...answers, [questionId]: value };
-    setAnswers(next);
-    onAnswersChange?.(next);
+    const nextAnswers = { ...answers, [questionId]: value };
+    setAnswers(nextAnswers);
+    onAnswersChange?.(nextAnswers);
     setErrors((prev) => {
       if (!(questionId in prev)) return prev;
       const next = { ...prev };
