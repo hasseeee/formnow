@@ -78,7 +78,9 @@ export default function AdminHome() {
           {events.map((ev) => (
             <li key={ev.id} className="card event-list-item">
               <Link to={`/admin/events/${ev.id}`}>{ev.name}</Link>
-              <KebabMenu items={[{ label: '削除', onClick: () => handleDelete(ev), danger: true }]} />
+              <KebabMenu
+                items={[{ label: '削除', onClick: () => handleDelete(ev), danger: true }]}
+              />
             </li>
           ))}
         </ul>

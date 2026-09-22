@@ -163,7 +163,9 @@ export default function FormEditPage() {
           if (key !== undefined) idByKey.set(key, sq.id);
         });
         return prev.map((q) =>
-          q.id === undefined && idByKey.has(q.clientKey) ? { ...q, id: idByKey.get(q.clientKey) } : q,
+          q.id === undefined && idByKey.has(q.clientKey)
+            ? { ...q, id: idByKey.get(q.clientKey) }
+            : q,
         );
       });
       setSaveStatus('saved');
@@ -268,7 +270,11 @@ export default function FormEditPage() {
       const updated = await updateForm(formId, { status });
       setData((prev) => (prev ? { ...prev, form: updated } : prev));
       toast.show(
-        status === 'open' ? '公開しました' : status === 'closed' ? '締め切りました' : '下書きに戻しました',
+        status === 'open'
+          ? '公開しました'
+          : status === 'closed'
+            ? '締め切りました'
+            : '下書きに戻しました',
       );
     } catch (err) {
       toast.show(err instanceof ApiRequestError ? err.message : '更新に失敗しました。', 'error');

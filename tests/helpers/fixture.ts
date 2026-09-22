@@ -17,7 +17,9 @@ export interface Fixture {
 }
 
 export async function seed(client: TestClient): Promise<Fixture> {
-  const event = await client.adminJson<{ id: number }>('POST', '/api/admin/events', { name: 'テスト発表会' });
+  const event = await client.adminJson<{ id: number }>('POST', '/api/admin/events', {
+    name: 'テスト発表会',
+  });
   const eventId = event.id;
 
   const [a, b, c] = await client.adminJson<Team[]>('PUT', `/api/admin/events/${eventId}/teams`, {
@@ -38,7 +40,7 @@ export async function seed(client: TestClient): Promise<Fixture> {
         { name: 'メンバーA', role: 'member', teamId: a.id, sortOrder: 3 },
         { name: 'メンバーB', role: 'member', teamId: b.id, sortOrder: 4 },
       ],
-    }
+    },
   );
 
   const judgeForm = await client.adminJson<Form>('POST', '/api/admin/forms', {
@@ -61,30 +63,66 @@ export async function seed(client: TestClient): Promise<Fixture> {
     `/api/admin/forms/${judgeForm.id}/questions`,
     {
       questions: [
-        { sortOrder: 1, type: 'rating', labelMd: '技術力', options: null, maxScore: 10, weight: 2, required: true },
-        { sortOrder: 2, type: 'rating', labelMd: 'デザイン', options: null, maxScore: 10, weight: 1, required: true },
-        { sortOrder: 3, type: 'textarea', labelMd: '講評', options: null, maxScore: null, weight: 1, required: false },
+        {
+          sortOrder: 1,
+          type: 'rating',
+          labelMd: '技術力',
+          options: null,
+          maxScore: 10,
+          weight: 2,
+          required: true,
+        },
+        {
+          sortOrder: 2,
+          type: 'rating',
+          labelMd: 'デザイン',
+          options: null,
+          maxScore: 10,
+          weight: 1,
+          required: true,
+        },
+        {
+          sortOrder: 3,
+          type: 'textarea',
+          labelMd: '講評',
+          options: null,
+          maxScore: null,
+          weight: 1,
+          required: false,
+        },
       ],
-    }
+    },
   );
-  const [like, again] = await client.adminJson<Question[]>('PUT', `/api/admin/forms/${peerForm.id}/questions`, {
-    questions: [
-      { sortOrder: 1, type: 'rating', labelMd: 'よかった度', options: null, maxScore: 5, weight: 1, required: true },
-      {
-        sortOrder: 2,
-        type: 'choice',
-        labelMd: 'また聞きたい?',
-        options: [
-          { label: 'ぜひ', score: 2 },
-          { label: 'まあ', score: 1 },
-          { label: 'うーん', score: 0 },
-        ],
-        maxScore: null,
-        weight: 1,
-        required: true,
-      },
-    ],
-  });
+  const [like, again] = await client.adminJson<Question[]>(
+    'PUT',
+    `/api/admin/forms/${peerForm.id}/questions`,
+    {
+      questions: [
+        {
+          sortOrder: 1,
+          type: 'rating',
+          labelMd: 'よかった度',
+          options: null,
+          maxScore: 5,
+          weight: 1,
+          required: true,
+        },
+        {
+          sortOrder: 2,
+          type: 'choice',
+          labelMd: 'また聞きたい?',
+          options: [
+            { label: 'ぜひ', score: 2 },
+            { label: 'まあ', score: 1 },
+            { label: 'うーん', score: 0 },
+          ],
+          maxScore: null,
+          weight: 1,
+          required: true,
+        },
+      ],
+    },
+  );
 
   await client.adminJson('PATCH', `/api/admin/forms/${judgeForm.id}`, { status: 'open' });
   await client.adminJson('PATCH', `/api/admin/forms/${peerForm.id}`, { status: 'open' });
@@ -103,7 +141,14 @@ export async function seed(client: TestClient): Promise<Fixture> {
 }
 
 /** 審査員フォームへの回答を送る（技術力・デザインの点数だけ指定） */
-export function submitJudge(client: TestClient, f: Fixture, respondentId: number, teamId: number, tech: number, design: number) {
+export function submitJudge(
+  client: TestClient,
+  f: Fixture,
+  respondentId: number,
+  teamId: number,
+  tech: number,
+  design: number,
+) {
   return client.request('POST', '/api/forms/judge/responses', {
     respondentId,
     teamId,

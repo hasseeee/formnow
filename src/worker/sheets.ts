@@ -22,7 +22,7 @@ export class SheetsApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly body: string
+    public readonly body: string,
   ) {
     super(message);
     this.name = 'SheetsApiError';
@@ -61,13 +61,19 @@ interface ServiceAccountKey {
 function parseServiceAccountJson(json: string): ServiceAccountKey {
   const parsed = JSON.parse(json) as Partial<ServiceAccountKey>;
   if (!parsed.client_email || !parsed.private_key) {
-    throw new SheetsConfigError('GOOGLE_SERVICE_ACCOUNT_JSON の形式が不正です (client_email/private_keyが必要)');
+    throw new SheetsConfigError(
+      'GOOGLE_SERVICE_ACCOUNT_JSON の形式が不正です (client_email/private_keyが必要)',
+    );
   }
   return { client_email: parsed.client_email, private_key: parsed.private_key };
 }
 
 /** JWTのヘッダー+ペイロード部分 (署名前、base64url結合済み) を組み立てる。純粋関数。 */
-export function buildJwtSigningInput(clientEmail: string, scope: string, nowEpochSeconds: number): string {
+export function buildJwtSigningInput(
+  clientEmail: string,
+  scope: string,
+  nowEpochSeconds: number,
+): string {
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
     iss: clientEmail,
@@ -93,12 +99,12 @@ async function signJwt(serviceAccountJson: string): Promise<string> {
     pemToArrayBuffer(key.private_key),
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
     false,
-    ['sign']
+    ['sign'],
   );
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5',
     cryptoKey,
-    new TextEncoder().encode(signingInput)
+    new TextEncoder().encode(signingInput),
   );
   return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
 }
@@ -106,7 +112,11 @@ async function signJwt(serviceAccountJson: string): Promise<string> {
 async function getAccessToken(serviceAccountJson: string): Promise<string> {
   const fingerprint = serviceAccountJson.length + ':' + serviceAccountJson.slice(0, 32);
   const now = Date.now();
-  if (cachedToken && cachedToken.keyFingerprint === fingerprint && cachedToken.expiresAtMs > now + 60_000) {
+  if (
+    cachedToken &&
+    cachedToken.keyFingerprint === fingerprint &&
+    cachedToken.expiresAtMs > now + 60_000
+  ) {
     return cachedToken.token;
   }
 
@@ -174,13 +184,24 @@ type CellValue = string | number;
 
 /** 回答タブのヘッダー行 */
 export function buildResponseHeaderRow(questions: Question[]): CellValue[] {
-  return ['回答者', 'チーム', '送信日時', ...questions.map((q) => stripMarkdown(q.labelMd)), '合計スコア'];
+  return [
+    '回答者',
+    'チーム',
+    '送信日時',
+    ...questions.map((q) => stripMarkdown(q.labelMd)),
+    '合計スコア',
+  ];
 }
 
 /** 回答タブの1行分のデータ */
 export function buildResponseDataRow(
   questions: Question[],
-  response: { respondentName: string; teamName: string; submittedAt: string; answers: { questionId: number; value: AnswerValue }[] }
+  response: {
+    respondentName: string;
+    teamName: string;
+    submittedAt: string;
+    answers: { questionId: number; value: AnswerValue }[];
+  },
 ): CellValue[] {
   const answerByQuestion = new Map(response.answers.map((a) => [a.questionId, a.value]));
   const score = responseScore(questions, response.answers);
@@ -214,9 +235,16 @@ export interface SummarySheetFormulaSection {
 export function buildSummarySheetRows(
   teamRows: SummarySheetTeamRow[],
   scoredQuestions: Question[],
-  formulaSections: SummarySheetFormulaSection[]
+  formulaSections: SummarySheetFormulaSection[],
 ): CellValue[][] {
-  const header: CellValue[] = ['順位', 'チーム', '回答数', '平均', '合計', ...scoredQuestions.map((q) => stripMarkdown(q.labelMd))];
+  const header: CellValue[] = [
+    '順位',
+    'チーム',
+    '回答数',
+    '平均',
+    '合計',
+    ...scoredQuestions.map((q) => stripMarkdown(q.labelMd)),
+  ];
   const rows: CellValue[][] = [header];
   for (const t of teamRows) {
     rows.push([
@@ -243,7 +271,11 @@ export function buildSummarySheetRows(
 
 // ---------- Sheets API呼び出し ----------
 
-async function sheetsFetch(accessToken: string, path: string, init?: RequestInit): Promise<unknown> {
+async function sheetsFetch(
+  accessToken: string,
+  path: string,
+  init?: RequestInit,
+): Promise<unknown> {
   const res = await fetch(`${SHEETS_API_BASE}${path}`, {
     ...init,
     headers: {
@@ -263,12 +295,16 @@ async function sheetsFetch(accessToken: string, path: string, init?: RequestInit
 async function getSheetTitles(accessToken: string, spreadsheetId: string): Promise<string[]> {
   const data = (await sheetsFetch(
     accessToken,
-    `/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`
+    `/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`,
   )) as { sheets?: { properties?: { title?: string } }[] };
   return (data.sheets ?? []).map((s) => s.properties?.title).filter((t): t is string => !!t);
 }
 
-async function addSheetTab(accessToken: string, spreadsheetId: string, title: string): Promise<void> {
+async function addSheetTab(
+  accessToken: string,
+  spreadsheetId: string,
+  title: string,
+): Promise<void> {
   await sheetsFetch(accessToken, `/${encodeURIComponent(spreadsheetId)}:batchUpdate`, {
     method: 'POST',
     body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] }),
@@ -276,26 +312,38 @@ async function addSheetTab(accessToken: string, spreadsheetId: string, title: st
 }
 
 /** タブが無ければ作成する */
-async function ensureTabExists(accessToken: string, spreadsheetId: string, tabName: string): Promise<void> {
+async function ensureTabExists(
+  accessToken: string,
+  spreadsheetId: string,
+  tabName: string,
+): Promise<void> {
   const titles = await getSheetTitles(accessToken, spreadsheetId);
   if (!titles.includes(tabName)) {
     await addSheetTab(accessToken, spreadsheetId, tabName);
   }
 }
 
-async function clearSheet(accessToken: string, spreadsheetId: string, tabName: string): Promise<void> {
+async function clearSheet(
+  accessToken: string,
+  spreadsheetId: string,
+  tabName: string,
+): Promise<void> {
   const range = `${escapeSheetName(tabName)}`;
-  await sheetsFetch(accessToken, `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:clear`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
+  await sheetsFetch(
+    accessToken,
+    `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:clear`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 async function writeSheetValues(
   accessToken: string,
   spreadsheetId: string,
   tabName: string,
-  values: CellValue[][]
+  values: CellValue[][],
 ): Promise<void> {
   const rows = values.length;
   const cols = values.reduce((m, r) => Math.max(m, r.length), 0);
@@ -306,7 +354,7 @@ async function writeSheetValues(
     {
       method: 'PUT',
       body: JSON.stringify({ range, values }),
-    }
+    },
   );
 }
 
@@ -314,18 +362,18 @@ async function appendSheetRow(
   accessToken: string,
   spreadsheetId: string,
   tabName: string,
-  row: CellValue[]
+  row: CellValue[],
 ): Promise<void> {
   const range = `${escapeSheetName(tabName)}!A1`;
   await sheetsFetch(
     accessToken,
     `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(
-      range
+      range,
     )}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     {
       method: 'POST',
       body: JSON.stringify({ range, values: [row] }),
-    }
+    },
   );
 }
 
@@ -336,7 +384,11 @@ async function appendSheetRow(
  * フォームにsheet_idが無い、またはシークレット未設定なら何もしない (silent no-op)。
  * Google API呼び出しに失敗した場合は例外を投げる (呼び出し側 public.ts がbest-effortで握りつぶす)。
  */
-export async function appendResponseToSheet(env: Env, formId: number, responseId: number): Promise<void> {
+export async function appendResponseToSheet(
+  env: Env,
+  formId: number,
+  responseId: number,
+): Promise<void> {
   const form = await db.getFormById(env.DB, formId);
   if (!form || !form.sheetId || !env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
 
@@ -363,10 +415,13 @@ async function writeSheetValuesIfEmpty(
   accessToken: string,
   spreadsheetId: string,
   tabName: string,
-  headerRow: CellValue[]
+  headerRow: CellValue[],
 ): Promise<void> {
   const range = `${escapeSheetName(tabName)}!A1:A1`;
-  const data = (await sheetsFetch(accessToken, `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`)) as {
+  const data = (await sheetsFetch(
+    accessToken,
+    `/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`,
+  )) as {
     values?: unknown[][];
   } | null;
   const hasHeader = !!data?.values && data.values.length > 0;
@@ -377,7 +432,7 @@ async function writeSheetValuesIfEmpty(
 
 async function requireSheetsContext(
   env: Env,
-  formId: number
+  formId: number,
 ): Promise<{ sheetId: string; slug: string; eventId: number; serviceAccountJson: string }> {
   const form = await db.getFormById(env.DB, formId);
   if (!form) throw new SheetsConfigError('フォームが見つかりません');
@@ -385,7 +440,12 @@ async function requireSheetsContext(
   if (!env.GOOGLE_SERVICE_ACCOUNT_JSON) {
     throw new SheetsConfigError('Sheets連携が未設定です(GOOGLE_SERVICE_ACCOUNT_JSON)');
   }
-  return { sheetId: form.sheetId, slug: form.slug, eventId: form.eventId, serviceAccountJson: env.GOOGLE_SERVICE_ACCOUNT_JSON };
+  return {
+    sheetId: form.sheetId,
+    slug: form.slug,
+    eventId: form.eventId,
+    serviceAccountJson: env.GOOGLE_SERVICE_ACCOUNT_JSON,
+  };
 }
 
 /**
@@ -420,10 +480,12 @@ export async function syncFormToSheet(env: Env, formId: number): Promise<{ rows:
   }));
 
   const formulaResults = await computeFormulaResults(env.DB, eventId);
-  const formulaSections: SummarySheetFormulaSection[] = (formulaResults?.formulas ?? []).map((f) => ({
-    name: f.formula.name,
-    ranking: f.ranking.map((r) => ({ teamName: r.teamName, value: r.value, rank: r.rank })),
-  }));
+  const formulaSections: SummarySheetFormulaSection[] = (formulaResults?.formulas ?? []).map(
+    (f) => ({
+      name: f.formula.name,
+      ranking: f.ranking.map((r) => ({ teamName: r.teamName, value: r.value, rank: r.rank })),
+    }),
+  );
 
   const summaryTab = summaryTabName(slug);
   const summaryRows = buildSummarySheetRows(teamRows, scoredQuestions, formulaSections);

@@ -9,7 +9,7 @@ updates:
       # wrangler と @cloudflare/vite-plugin は内部の workerd の版をそろえる必要がある。
       # 片方だけ上げるとローカルのD1が開けなくなるので、必ずまとめて更新する
       cloudflare:
-        patterns: ["wrangler", "@cloudflare/*"]
+        patterns: ['wrangler', '@cloudflare/*']
       minor-and-patch:
         update-types: [minor, patch]
   - package-ecosystem: github-actions

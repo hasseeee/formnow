@@ -76,7 +76,9 @@ export default function QuestionsPanel({
               canMoveUp={i > 0}
               canMoveDown={i < questions.length - 1}
             />
-            {q.labelMd.trim() === '' && <p className="qcard-empty-hint">質問文を入力してください</p>}
+            {q.labelMd.trim() === '' && (
+              <p className="qcard-empty-hint">質問文を入力してください</p>
+            )}
           </div>
         ))}
         {questions.length === 0 && <p className="muted">質問がまだありません。</p>}

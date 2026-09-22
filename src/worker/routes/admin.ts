@@ -279,7 +279,13 @@ adminRoutes.get('/forms/:id/export.csv', async (c) => {
     db.listResponsesForForm(c.env.DB, id),
   ]);
 
-  const header = ['回答者', 'チーム', '送信日時', ...questions.map((q) => stripMarkdown(q.labelMd)), '合計スコア'];
+  const header = [
+    '回答者',
+    'チーム',
+    '送信日時',
+    ...questions.map((q) => stripMarkdown(q.labelMd)),
+    '合計スコア',
+  ];
   const rows: string[][] = [header];
   for (const r of responses) {
     const answerByQuestion = new Map(r.answers.map((a) => [a.questionId, a.value]));

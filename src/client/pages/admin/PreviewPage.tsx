@@ -54,9 +54,12 @@ export default function PreviewPage() {
 
   // プレビューでは送信をDBに書き込まず、メモリ上のstateのみ更新する(FormFlow側で反映済み)。
   // トースト表示や「次のチームへ進む」といった挙動はFormFlowと共通。
-  const handleSubmit = useCallback(async (_respondentId: number, _team: Team, _answers: AnswerMap) => {
-    // no-op: プレビューは保存しない
-  }, []);
+  const handleSubmit = useCallback(
+    async (_respondentId: number, _team: Team, _answers: AnswerMap) => {
+      // no-op: プレビューは保存しない
+    },
+    [],
+  );
 
   const banner = (
     <div className="preview-banner">
@@ -79,7 +82,11 @@ export default function PreviewPage() {
         {phase === 'loading' && <CenteredMessage>読み込み中…</CenteredMessage>}
         {phase === 'error' && <CenteredMessage tone="error">{errorMessage}</CenteredMessage>}
         {phase === 'ready' && view && (
-          <FormFlow view={view} loadInitialResponses={loadInitialResponses} onSubmit={handleSubmit} />
+          <FormFlow
+            view={view}
+            loadInitialResponses={loadInitialResponses}
+            onSubmit={handleSubmit}
+          />
         )}
       </div>
     </div>

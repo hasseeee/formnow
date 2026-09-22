@@ -72,7 +72,10 @@ export default function QuestionEditor({
     onChange(patch);
   };
 
-  const updateOption = (index: number, patch: Partial<{ label: string; score: number | undefined }>) => {
+  const updateOption = (
+    index: number,
+    patch: Partial<{ label: string; score: number | undefined }>,
+  ) => {
     const options = [...(question.options ?? [])];
     options[index] = { ...options[index], ...patch };
     onChange({ options });
@@ -93,7 +96,9 @@ export default function QuestionEditor({
 
   const handleRemove = () => {
     if (question.id !== undefined) {
-      const ok = window.confirm('この質問を削除すると、この質問への回答もすべて削除されます。よろしいですか？');
+      const ok = window.confirm(
+        'この質問を削除すると、この質問への回答もすべて削除されます。よろしいですか？',
+      );
       if (!ok) return;
     }
     onRemove();
@@ -165,7 +170,11 @@ export default function QuestionEditor({
                   })
                 }
               />
-              <button type="button" className="btn btn-danger-ghost" onClick={() => removeOption(i)}>
+              <button
+                type="button"
+                className="btn btn-danger-ghost"
+                onClick={() => removeOption(i)}
+              >
                 削除
               </button>
             </div>

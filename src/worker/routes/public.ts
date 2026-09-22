@@ -23,7 +23,7 @@ const submitSchema = z.object({
       z.object({
         questionId: z.number().int(),
         value: answerValueSchema,
-      })
+      }),
     )
     .max(200),
 });
@@ -160,13 +160,19 @@ publicRoutes.post('/:slug/responses', async (c) => {
     }
   }
 
-  const responseId = await db.upsertResponse(c.env.DB, form.id, body.respondentId, body.teamId, body.answers);
+  const responseId = await db.upsertResponse(
+    c.env.DB,
+    form.id,
+    body.respondentId,
+    body.teamId,
+    body.answers,
+  );
 
   // シートへの追記は応答をブロックしないよう waitUntil に載せる (best-effort)
   c.executionCtx.waitUntil(
     appendResponseToSheet(c.env, form.id, responseId).catch(() => {
       // best-effort: シート追記の失敗は回答受付をブロックしない
-    })
+    }),
   );
 
   return c.json({ ok: true });

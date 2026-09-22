@@ -135,7 +135,7 @@ async function upsertOrderedList<T extends HasOptionalId>(
   parentId: number,
   items: T[],
   columns: string[],
-  toValues: (item: T) => unknown[]
+  toValues: (item: T) => unknown[],
 ): Promise<void> {
   const existingRes = await db
     .prepare(`SELECT id FROM ${table} WHERE ${parentColumn} = ?`)
@@ -153,14 +153,16 @@ async function upsertOrderedList<T extends HasOptionalId>(
     const values = toValues(item);
     if (item.id != null && existingIds.has(item.id)) {
       const setClause = columns.map((col) => `${col} = ?`).join(', ');
-      stmts.push(db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).bind(...values, item.id));
+      stmts.push(
+        db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).bind(...values, item.id),
+      );
     } else {
       const colList = columns.join(', ');
       const placeholders = columns.map(() => '?').join(', ');
       stmts.push(
         db
           .prepare(`INSERT INTO ${table} (${parentColumn}, ${colList}) VALUES (?, ${placeholders})`)
-          .bind(parentId, ...values)
+          .bind(parentId, ...values),
       );
     }
   }
@@ -182,7 +184,8 @@ export interface MergeItemInput<T> {
   data: T;
 }
 
-export type MergePlanEntry<T> = { action: 'update'; id: number; data: T } | { action: 'insert'; data: T };
+export type MergePlanEntry<T> =
+  { action: 'update'; id: number; data: T } | { action: 'insert'; data: T };
 
 /**
  * 削除しないマージ計画を立てる純粋関数。
@@ -191,7 +194,10 @@ export type MergePlanEntry<T> = { action: 'update'; id: number; data: T } | { ac
  * (c) 一致する既存行が無ければ新規追加
  * (d) items に含まれない既存行はそのまま残す (削除しない)
  */
-export function planMergeUpsert<T>(existing: MergeExistingRow[], items: MergeItemInput<T>[]): MergePlanEntry<T>[] {
+export function planMergeUpsert<T>(
+  existing: MergeExistingRow[],
+  items: MergeItemInput<T>[],
+): MergePlanEntry<T>[] {
   const existingById = new Map(existing.map((e) => [e.id, e]));
   const usedIds = new Set<number>();
   const plan: MergePlanEntry<T>[] = [];
@@ -221,21 +227,23 @@ async function executeMergePlan<T>(
   parentId: number,
   plan: MergePlanEntry<T>[],
   columns: string[],
-  toValues: (item: T) => unknown[]
+  toValues: (item: T) => unknown[],
 ): Promise<void> {
   const stmts: D1PreparedStatement[] = [];
   for (const entry of plan) {
     const values = toValues(entry.data);
     if (entry.action === 'update') {
       const setClause = columns.map((col) => `${col} = ?`).join(', ');
-      stmts.push(db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).bind(...values, entry.id));
+      stmts.push(
+        db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).bind(...values, entry.id),
+      );
     } else {
       const colList = columns.join(', ');
       const placeholders = columns.map(() => '?').join(', ');
       stmts.push(
         db
           .prepare(`INSERT INTO ${table} (${parentColumn}, ${colList}) VALUES (?, ${placeholders})`)
-          .bind(parentId, ...values)
+          .bind(parentId, ...values),
       );
     }
   }
@@ -247,7 +255,10 @@ async function executeMergePlan<T>(
 // ---------- events ----------
 
 export async function createEvent(db: D1Database, name: string): Promise<Event> {
-  const row = await db.prepare('INSERT INTO events (name) VALUES (?) RETURNING *').bind(name).first<EventRow>();
+  const row = await db
+    .prepare('INSERT INTO events (name) VALUES (?) RETURNING *')
+    .bind(name)
+    .first<EventRow>();
   return mapEvent(row!);
 }
 
@@ -306,7 +317,11 @@ export async function getTeamById(db: D1Database, id: number): Promise<Team | nu
   return row ? mapTeam(row) : null;
 }
 
-export async function upsertTeams(db: D1Database, eventId: number, items: TeamInput[]): Promise<Team[]> {
+export async function upsertTeams(
+  db: D1Database,
+  eventId: number,
+  items: TeamInput[],
+): Promise<Team[]> {
   await upsertOrderedList(db, 'teams', 'event_id', eventId, items, ['name', 'sort_order'], (i) => [
     i.name,
     i.sortOrder,
@@ -319,13 +334,24 @@ export async function upsertTeams(db: D1Database, eventId: number, items: TeamIn
  * idが一致すれば更新、id無しは既存チームと同名なら更新扱い、一致しなければ追加。
  * items に含まれない既存チームは削除しない。
  */
-export async function mergeTeams(db: D1Database, eventId: number, items: TeamInput[]): Promise<Team[]> {
+export async function mergeTeams(
+  db: D1Database,
+  eventId: number,
+  items: TeamInput[],
+): Promise<Team[]> {
   const existingRes = await db
     .prepare('SELECT id, name FROM teams WHERE event_id = ?')
     .bind(eventId)
     .all<{ id: number; name: string }>();
-  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.name }));
-  const mergeItems: MergeItemInput<TeamInput>[] = items.map((i) => ({ id: i.id, matchKey: i.name, data: i }));
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({
+    id: r.id,
+    matchKey: r.name,
+  }));
+  const mergeItems: MergeItemInput<TeamInput>[] = items.map((i) => ({
+    id: i.id,
+    matchKey: i.name,
+    data: i,
+  }));
   const plan = planMergeUpsert(existing, mergeItems);
   await executeMergePlan(db, 'teams', 'event_id', eventId, plan, ['name', 'sort_order'], (i) => [
     i.name,
@@ -353,7 +379,10 @@ export async function listRespondents(db: D1Database, eventId: number): Promise<
 }
 
 export async function getRespondentById(db: D1Database, id: number): Promise<Respondent | null> {
-  const row = await db.prepare('SELECT * FROM respondents WHERE id = ?').bind(id).first<RespondentRow>();
+  const row = await db
+    .prepare('SELECT * FROM respondents WHERE id = ?')
+    .bind(id)
+    .first<RespondentRow>();
   return row ? mapRespondent(row) : null;
 }
 
@@ -361,7 +390,7 @@ export async function getRespondentById(db: D1Database, id: number): Promise<Res
 export async function listRespondentsForFormKind(
   db: D1Database,
   eventId: number,
-  kind: FormKind
+  kind: FormKind,
 ): Promise<Respondent[]> {
   const role: Role = kind === 'judge' ? 'judge' : 'member';
   const { results } = await db
@@ -378,7 +407,7 @@ export class RespondentTeamMismatchError extends Error {}
 async function validateRespondentTeamIds(
   db: D1Database,
   eventId: number,
-  items: { teamId: number | null }[]
+  items: { teamId: number | null }[],
 ): Promise<void> {
   const teamIds = [...new Set(items.map((i) => i.teamId).filter((id): id is number => id != null))];
   if (teamIds.length === 0) return;
@@ -390,14 +419,16 @@ async function validateRespondentTeamIds(
   const validIds = new Set((results ?? []).map((r) => r.id));
   const invalid = teamIds.filter((id) => !validIds.has(id));
   if (invalid.length > 0) {
-    throw new RespondentTeamMismatchError(`teamId ${invalid.join(', ')} は同じイベントのチームではありません`);
+    throw new RespondentTeamMismatchError(
+      `teamId ${invalid.join(', ')} は同じイベントのチームではありません`,
+    );
   }
 }
 
 export async function upsertRespondents(
   db: D1Database,
   eventId: number,
-  items: RespondentInput[]
+  items: RespondentInput[],
 ): Promise<Respondent[]> {
   await validateRespondentTeamIds(db, eventId, items);
   await upsertOrderedList(
@@ -407,7 +438,7 @@ export async function upsertRespondents(
     eventId,
     items,
     ['name', 'role', 'team_id', 'sort_order'],
-    (i) => [i.name, i.role, i.teamId, i.sortOrder]
+    (i) => [i.name, i.role, i.teamId, i.sortOrder],
   );
   return listRespondents(db, eventId);
 }
@@ -420,15 +451,22 @@ export async function upsertRespondents(
 export async function mergeRespondents(
   db: D1Database,
   eventId: number,
-  items: RespondentInput[]
+  items: RespondentInput[],
 ): Promise<Respondent[]> {
   await validateRespondentTeamIds(db, eventId, items);
   const existingRes = await db
     .prepare('SELECT id, name FROM respondents WHERE event_id = ?')
     .bind(eventId)
     .all<{ id: number; name: string }>();
-  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.name }));
-  const mergeItems: MergeItemInput<RespondentInput>[] = items.map((i) => ({ id: i.id, matchKey: i.name, data: i }));
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({
+    id: r.id,
+    matchKey: r.name,
+  }));
+  const mergeItems: MergeItemInput<RespondentInput>[] = items.map((i) => ({
+    id: i.id,
+    matchKey: i.name,
+    data: i,
+  }));
   const plan = planMergeUpsert(existing, mergeItems);
   await executeMergePlan(
     db,
@@ -437,7 +475,7 @@ export async function mergeRespondents(
     eventId,
     plan,
     ['name', 'role', 'team_id', 'sort_order'],
-    (i) => [i.name, i.role, i.teamId, i.sortOrder]
+    (i) => [i.name, i.role, i.teamId, i.sortOrder],
   );
   return listRespondents(db, eventId);
 }
@@ -463,7 +501,9 @@ export interface FormPatch {
 
 export async function createForm(db: D1Database, input: FormCreateInput): Promise<Form> {
   const row = await db
-    .prepare('INSERT INTO forms (event_id, slug, title, description_md, kind) VALUES (?, ?, ?, ?, ?) RETURNING *')
+    .prepare(
+      'INSERT INTO forms (event_id, slug, title, description_md, kind) VALUES (?, ?, ?, ?, ?) RETURNING *',
+    )
     .bind(input.eventId, input.slug, input.title, input.descriptionMd, input.kind)
     .first<FormRow>();
   return mapForm(row!);
@@ -493,11 +533,18 @@ export async function getFormById(db: D1Database, id: number): Promise<Form | nu
 }
 
 export async function listForms(db: D1Database, eventId: number): Promise<Form[]> {
-  const { results } = await db.prepare('SELECT * FROM forms WHERE event_id = ? ORDER BY id').bind(eventId).all<FormRow>();
+  const { results } = await db
+    .prepare('SELECT * FROM forms WHERE event_id = ? ORDER BY id')
+    .bind(eventId)
+    .all<FormRow>();
   return (results ?? []).map(mapForm);
 }
 
-export async function updateForm(db: D1Database, id: number, patch: FormPatch): Promise<Form | null> {
+export async function updateForm(
+  db: D1Database,
+  id: number,
+  patch: FormPatch,
+): Promise<Form | null> {
   const fields: string[] = [];
   const values: unknown[] = [];
   if (patch.title !== undefined) {
@@ -557,7 +604,11 @@ export async function listQuestions(db: D1Database, formId: number): Promise<Que
   return (results ?? []).map(mapQuestion);
 }
 
-export async function upsertQuestions(db: D1Database, formId: number, items: QuestionInput[]): Promise<Question[]> {
+export async function upsertQuestions(
+  db: D1Database,
+  formId: number,
+  items: QuestionInput[],
+): Promise<Question[]> {
   await upsertOrderedList(
     db,
     'questions',
@@ -573,7 +624,7 @@ export async function upsertQuestions(db: D1Database, formId: number, items: Que
       i.maxScore,
       i.weight,
       i.required ? 1 : 0,
-    ]
+    ],
   );
   return listQuestions(db, formId);
 }
@@ -583,13 +634,24 @@ export async function upsertQuestions(db: D1Database, formId: number, items: Que
  * idが一致すれば更新、id無しはlabelMdが完全一致する既存質問があれば更新扱い、一致しなければ追加。
  * items に含まれない既存質問は削除しない。
  */
-export async function mergeQuestions(db: D1Database, formId: number, items: QuestionInput[]): Promise<Question[]> {
+export async function mergeQuestions(
+  db: D1Database,
+  formId: number,
+  items: QuestionInput[],
+): Promise<Question[]> {
   const existingRes = await db
     .prepare('SELECT id, label_md FROM questions WHERE form_id = ?')
     .bind(formId)
     .all<{ id: number; label_md: string }>();
-  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.label_md }));
-  const mergeItems: MergeItemInput<QuestionInput>[] = items.map((i) => ({ id: i.id, matchKey: i.labelMd, data: i }));
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({
+    id: r.id,
+    matchKey: r.label_md,
+  }));
+  const mergeItems: MergeItemInput<QuestionInput>[] = items.map((i) => ({
+    id: i.id,
+    matchKey: i.labelMd,
+    data: i,
+  }));
   const plan = planMergeUpsert(existing, mergeItems);
   await executeMergePlan(
     db,
@@ -606,7 +668,7 @@ export async function mergeQuestions(db: D1Database, formId: number, items: Ques
       i.maxScore,
       i.weight,
       i.required ? 1 : 0,
-    ]
+    ],
   );
   return listQuestions(db, formId);
 }
@@ -620,13 +682,15 @@ export interface AnswerInput {
 
 async function getAnswersByResponseIds(
   db: D1Database,
-  responseIds: number[]
+  responseIds: number[],
 ): Promise<Map<number, AnswerInput[]>> {
   const map = new Map<number, AnswerInput[]>();
   if (responseIds.length === 0) return map;
   const placeholders = responseIds.map(() => '?').join(',');
   const { results } = await db
-    .prepare(`SELECT response_id, question_id, value_json FROM answers WHERE response_id IN (${placeholders})`)
+    .prepare(
+      `SELECT response_id, question_id, value_json FROM answers WHERE response_id IN (${placeholders})`,
+    )
     .bind(...responseIds)
     .all<{ response_id: number; question_id: number; value_json: string }>();
   for (const row of results ?? []) {
@@ -641,10 +705,12 @@ export async function getResponse(
   db: D1Database,
   formId: number,
   respondentId: number,
-  teamId: number
+  teamId: number,
 ): Promise<{ id: number; submittedAt: string } | null> {
   const row = await db
-    .prepare('SELECT id, submitted_at FROM responses WHERE form_id = ? AND respondent_id = ? AND team_id = ?')
+    .prepare(
+      'SELECT id, submitted_at FROM responses WHERE form_id = ? AND respondent_id = ? AND team_id = ?',
+    )
     .bind(formId, respondentId, teamId)
     .first<{ id: number; submitted_at: string }>();
   return row ? { id: row.id, submittedAt: row.submitted_at } : null;
@@ -662,24 +728,26 @@ export async function upsertResponse(
   formId: number,
   respondentId: number,
   teamId: number,
-  answers: AnswerInput[]
+  answers: AnswerInput[],
 ): Promise<number> {
   const row = await db
     .prepare(
       `INSERT INTO responses (form_id, respondent_id, team_id) VALUES (?, ?, ?)
        ON CONFLICT(form_id, respondent_id, team_id) DO UPDATE SET submitted_at = datetime('now')
-       RETURNING id`
+       RETURNING id`,
     )
     .bind(formId, respondentId, teamId)
     .first<{ id: number }>();
   const responseId = row!.id;
 
-  const stmts: D1PreparedStatement[] = [db.prepare('DELETE FROM answers WHERE response_id = ?').bind(responseId)];
+  const stmts: D1PreparedStatement[] = [
+    db.prepare('DELETE FROM answers WHERE response_id = ?').bind(responseId),
+  ];
   for (const a of answers) {
     stmts.push(
       db
         .prepare('INSERT INTO answers (response_id, question_id, value_json) VALUES (?, ?, ?)')
-        .bind(responseId, a.questionId, JSON.stringify(a.value))
+        .bind(responseId, a.questionId, JSON.stringify(a.value)),
     );
   }
   await db.batch(stmts);
@@ -689,16 +757,19 @@ export async function upsertResponse(
 export async function listMyResponses(
   db: D1Database,
   formId: number,
-  respondentId: number
+  respondentId: number,
 ): Promise<{ responses: { teamId: number; submittedAt: string; answers: AnswerInput[] }[] }> {
   const { results } = await db
     .prepare(
-      'SELECT id, team_id, submitted_at FROM responses WHERE form_id = ? AND respondent_id = ? ORDER BY team_id'
+      'SELECT id, team_id, submitted_at FROM responses WHERE form_id = ? AND respondent_id = ? ORDER BY team_id',
     )
     .bind(formId, respondentId)
     .all<{ id: number; team_id: number; submitted_at: string }>();
   const rows = results ?? [];
-  const answersMap = await getAnswersByResponseIds(db, rows.map((r) => r.id));
+  const answersMap = await getAnswersByResponseIds(
+    db,
+    rows.map((r) => r.id),
+  );
   return {
     responses: rows.map((r) => ({
       teamId: r.team_id,
@@ -718,7 +789,10 @@ export interface AdminResponseView {
   answers: AnswerInput[];
 }
 
-export async function listResponsesForForm(db: D1Database, formId: number): Promise<AdminResponseView[]> {
+export async function listResponsesForForm(
+  db: D1Database,
+  formId: number,
+): Promise<AdminResponseView[]> {
   const { results } = await db
     .prepare(
       `SELECT r.id as id, r.respondent_id as respondent_id, resp.name as respondent_name,
@@ -727,7 +801,7 @@ export async function listResponsesForForm(db: D1Database, formId: number): Prom
        JOIN respondents resp ON resp.id = r.respondent_id
        JOIN teams t ON t.id = r.team_id
        WHERE r.form_id = ?
-       ORDER BY t.sort_order, resp.sort_order, r.id`
+       ORDER BY t.sort_order, resp.sort_order, r.id`,
     )
     .bind(formId)
     .all<{
@@ -739,7 +813,10 @@ export async function listResponsesForForm(db: D1Database, formId: number): Prom
       submitted_at: string;
     }>();
   const rows = results ?? [];
-  const answersMap = await getAnswersByResponseIds(db, rows.map((r) => r.id));
+  const answersMap = await getAnswersByResponseIds(
+    db,
+    rows.map((r) => r.id),
+  );
   return rows.map((r) => ({
     id: r.id,
     respondentId: r.respondent_id,
@@ -754,14 +831,17 @@ export async function listResponsesForForm(db: D1Database, formId: number): Prom
 /** 集計計算用: フォームの全回答を {teamId, answers} の形で返す */
 export async function listResponsesForScoring(
   db: D1Database,
-  formId: number
+  formId: number,
 ): Promise<{ teamId: number; answers: AnswerInput[] }[]> {
   const { results } = await db
     .prepare('SELECT id, team_id FROM responses WHERE form_id = ?')
     .bind(formId)
     .all<{ id: number; team_id: number }>();
   const rows = results ?? [];
-  const answersMap = await getAnswersByResponseIds(db, rows.map((r) => r.id));
+  const answersMap = await getAnswersByResponseIds(
+    db,
+    rows.map((r) => r.id),
+  );
   return rows.map((r) => ({ teamId: r.team_id, answers: answersMap.get(r.id) ?? [] }));
 }
 
@@ -781,11 +861,20 @@ export async function listFormulas(db: D1Database, eventId: number): Promise<For
   return (results ?? []).map(mapFormula);
 }
 
-export async function upsertFormulas(db: D1Database, eventId: number, items: FormulaInput[]): Promise<Formula[]> {
-  await upsertOrderedList(db, 'formulas', 'event_id', eventId, items, ['name', 'expression'], (i) => [
-    i.name,
-    i.expression,
-  ]);
+export async function upsertFormulas(
+  db: D1Database,
+  eventId: number,
+  items: FormulaInput[],
+): Promise<Formula[]> {
+  await upsertOrderedList(
+    db,
+    'formulas',
+    'event_id',
+    eventId,
+    items,
+    ['name', 'expression'],
+    (i) => [i.name, i.expression],
+  );
   return listFormulas(db, eventId);
 }
 
@@ -794,13 +883,24 @@ export async function upsertFormulas(db: D1Database, eventId: number, items: For
  * idが一致すれば更新、id無しは既存の計算式と同名なら更新扱い、一致しなければ追加。
  * items に含まれない既存の計算式は削除しない。
  */
-export async function mergeFormulas(db: D1Database, eventId: number, items: FormulaInput[]): Promise<Formula[]> {
+export async function mergeFormulas(
+  db: D1Database,
+  eventId: number,
+  items: FormulaInput[],
+): Promise<Formula[]> {
   const existingRes = await db
     .prepare('SELECT id, name FROM formulas WHERE event_id = ?')
     .bind(eventId)
     .all<{ id: number; name: string }>();
-  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({ id: r.id, matchKey: r.name }));
-  const mergeItems: MergeItemInput<FormulaInput>[] = items.map((i) => ({ id: i.id, matchKey: i.name, data: i }));
+  const existing: MergeExistingRow[] = (existingRes.results ?? []).map((r) => ({
+    id: r.id,
+    matchKey: r.name,
+  }));
+  const mergeItems: MergeItemInput<FormulaInput>[] = items.map((i) => ({
+    id: i.id,
+    matchKey: i.name,
+    data: i,
+  }));
   const plan = planMergeUpsert(existing, mergeItems);
   await executeMergePlan(db, 'formulas', 'event_id', eventId, plan, ['name', 'expression'], (i) => [
     i.name,
