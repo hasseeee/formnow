@@ -43,6 +43,8 @@ npm run dev                # http://localhost:5173
 5. **CIが通ったら「Ready for review」にする。** レビュー1件の承認とCI通過でマージできます。
 6. **Squash mergeでマージする。** PRのタイトルがそのまま `main` のコミットメッセージになります。
 
+> **PRは積まない。** 別のPRの上にPRを作る（PRの向き先を `main` 以外にする）と、土台のPRがSquashマージされた時点で上のPRがコンフリクトし、載せ直しが必要になります。依存する変更は、土台がマージされてから次のPRを出してください。
+
 ### PRのタイトル
 
 [Conventional Commits](https://www.conventionalcommits.org/ja/) の形式で、日本語で書きます。
@@ -63,12 +65,15 @@ docs: デプロイ手順にバックアップを追記
 ## マージの前に確認すること
 
 ```bash
+npm run format  # フォーマット（Prettier）
 npm run check   # 型チェック
 npm test        # テスト
 npm run build   # 本番ビルド
 ```
 
-この3つはCIでも自動で走ります。加えて、**`npm run dev` で実際に画面を触って確認**してください。型とテストが通っても画面が壊れていることはあります。
+この4つはCIでも自動で走ります（フォーマットはCIでは `npm run format:check` で、整形されていないファイルがあると失敗します）。加えて、**`npm run dev` で実際に画面を触って確認**してください。型とテストが通っても画面が壊れていることはあります。
+
+エディタで保存時に自動整形させておくと楽です。VS Code なら拡張 [Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)（`.vscode/extensions.json` で推奨済み）を入れて、設定で `editor.formatOnSave` を有効にしてください。
 UIを変えたPRにはスクリーンショットを貼ってください。
 
 ## テストの書き方
