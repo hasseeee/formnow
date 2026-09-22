@@ -583,6 +583,29 @@ label {
   font-weight: 500;
 }
 
+/* エディタの「各段階の説明」 */
+.rating-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.rating-step-num {
+  flex-shrink: 0;
+  width: 2em;
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.rating-labels-editor .field-hint {
+  margin: 4px 0 0;
+}
+
 .choice-options {
   display: flex;
   flex-direction: column;
