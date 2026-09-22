@@ -62,6 +62,13 @@ describe('normalizeScaleLabels', () => {
     expect(r).toEqual({ ok: false, error: 'scaleLabels の数（3）が maxScore（5）と一致しません' });
   });
 
+  it('1段階でも付けられる', () => {
+    expect(normalizeScaleLabels({ type: 'rating', maxScore: 1, scaleLabels: ['x'] })).toEqual({
+      ok: true,
+      value: ['x'],
+    });
+  });
+
   it('正しい配列はそのまま返す', () => {
     const labels = ['もう少し', '', '', '', 'とてもよい'];
     expect(normalizeScaleLabels({ type: 'rating', maxScore: 5, scaleLabels: labels })).toEqual({
@@ -104,6 +111,10 @@ describe('resizeScaleLabels', () => {
 
   it('長さ1→5: 先頭だけ残り、末尾に先頭はコピーされない', () => {
     expect(resizeScaleLabels(['ひとつ'], 5)).toEqual(['ひとつ', '', '', '', '']);
+  });
+
+  it('5→1: 先頭だけ残り、末尾はコピーされない', () => {
+    expect(resizeScaleLabels(five, 1)).toEqual(['もう少し']);
   });
 
   it.each([null, 4.5, 101])('newMax が %s なら null', (newMax) => {

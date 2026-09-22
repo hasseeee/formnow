@@ -631,6 +631,10 @@ describe('評価の段階の説明', () => {
     };
     const tool = result.tools.find((t) => t.name === 'set_questions')!;
     expect(tool.description).toContain('scaleLabels');
+    // 質問以外のツールには付けない
+    for (const name of ['set_teams', 'set_formulas']) {
+      expect(result.tools.find((t) => t.name === name)!.description).not.toContain('scaleLabels');
+    }
     const desc = tool.inputSchema.properties.questions.items.properties.scaleLabels.description;
     expect(desc).toContain('1点目から順に maxScore 個');
     expect(desc).toContain('空文字');

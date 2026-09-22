@@ -85,7 +85,7 @@ export function registerTools(server: McpServer, env: Env): void {
     'set_teams',
     {
       description:
-        'イベントのチーム一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存チームがあれば更新、無ければ追加する。既存項目は削除されません。rating には scaleLabels で段階ごとの説明を付けられる（回答者に表示される）。',
+        'イベントのチーム一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存チームがあれば更新、無ければ追加する。既存項目は削除されません。',
       inputSchema: {
         eventId: z.number().int(),
         teams: z
@@ -364,7 +364,7 @@ export function registerTools(server: McpServer, env: Env): void {
     'set_formulas',
     {
       description:
-        'イベントの自由計算式一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存計算式があれば更新、無ければ追加する。既存項目は削除されません。rating には scaleLabels で段階ごとの説明を付けられる（回答者に表示される）。',
+        'イベントの自由計算式一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目は同名の既存計算式があれば更新、無ければ追加する。既存項目は削除されません。',
       inputSchema: {
         eventId: z.number().int(),
         formulas: z

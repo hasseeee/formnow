@@ -111,7 +111,12 @@ export default function QuestionEditor({
     }
     const next = resizeScaleLabels(question.scaleLabels, newMax);
     if (countFilled(next) < countFilled(question.scaleLabels)) {
-      const ok = window.confirm('段階の数を変えると、両端以外の説明は消えます。よろしいですか？');
+      // 段階数が無効（空・小数・101以上）なら両端も残らない
+      const ok = window.confirm(
+        next === null
+          ? '段階の説明はすべて消えます。よろしいですか？'
+          : '段階の数を変えると、両端以外の説明は消えます。よろしいですか？',
+      );
       if (!ok) {
         setMaxScoreText(toMaxScoreText(question.maxScore));
         return;
@@ -240,7 +245,7 @@ export default function QuestionEditor({
                 type="text"
                 className="text-input"
                 value={opt.label}
-                placeholder="選択肢のラベル"
+                placeholder="選択肢の文言"
                 onChange={(e) => updateOption(i, { label: e.target.value })}
               />
               <input
