@@ -36,7 +36,11 @@ describe('normalizeScaleLabels', () => {
 
   it('前後の空白を trim して返す', () => {
     expect(
-      normalizeScaleLabels({ type: 'rating', maxScore: 3, scaleLabels: ['  もう少し ', ' ', 'よい'] }),
+      normalizeScaleLabels({
+        type: 'rating',
+        maxScore: 3,
+        scaleLabels: ['  もう少し ', ' ', 'よい'],
+      }),
     ).toEqual({ ok: true, value: ['もう少し', '', 'よい'] });
   });
 
