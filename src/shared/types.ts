@@ -43,6 +43,11 @@ export interface Question {
   maxScore: number | null;
   weight: number;
   required: boolean;
+  /**
+   * 評価（rating）の段階ごとの説明。labels[i] が値 i+1 の説明、長さは maxScore と同じ。
+   * 説明を付けない段階は空文字。説明がまったくなければ null。rating 以外は常に null
+   */
+  scaleLabels: string[] | null;
 }
 
 export interface Form {
@@ -70,6 +75,7 @@ export type AnswerValue = number | string | string[];
 
 /**
  * 回答者に公開する質問。採点の内部情報（weight・選択肢のscore）は含めない。
+ * 段階の説明（scaleLabels）は回答者に見せる情報なので公開する。
  * サーバー側で buildPublicFormView がこの形に落とす。
  */
 export type PublicQuestion = Omit<Question, 'weight' | 'options'> & {
