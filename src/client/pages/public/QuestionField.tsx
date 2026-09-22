@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { AnswerValue, PublicQuestion } from '../../../shared/types';
 import Markdown from '../../components/Markdown';
 
@@ -29,16 +30,27 @@ function QuestionInput({ question, value, onChange }: Omit<Props, 'error'>) {
 
       if (max > 10) {
         const unanswered = current === null;
+        // スライダーでは途中の段階の説明は出さず、両端だけを出す
+        const minLabel = question.scaleLabels?.[0] ?? '';
+        const maxLabel = question.scaleLabels?.[max - 1] ?? '';
         return (
           <div className={`rating-slider${unanswered ? ' unanswered' : ''}`}>
-            <input
-              type="range"
-              min={1}
-              max={max}
-              step={1}
-              value={current ?? Math.ceil(max / 2)}
-              onChange={(e) => onChange(Number(e.target.value))}
-            />
+            <div className="rating-slider-track">
+              <input
+                type="range"
+                min={1}
+                max={max}
+                step={1}
+                value={current ?? Math.ceil(max / 2)}
+                onChange={(e) => onChange(Number(e.target.value))}
+              />
+              {(minLabel || maxLabel) && (
+                <div className="rating-slider-ends">
+                  <span>{minLabel}</span>
+                  <span>{maxLabel}</span>
+                </div>
+              )}
+            </div>
             <span className="rating-slider-value">
               {unanswered ? 'タップして評価' : `${current} / ${max}`}
             </span>
@@ -47,18 +59,30 @@ function QuestionInput({ question, value, onChange }: Omit<Props, 'error'>) {
       }
 
       const options = Array.from({ length: max }, (_, i) => i + 1);
+      // 6段階以上は狭い画面で2段に固定する（列数 = 段階数 ÷ 2 の切り上げ）
+      const cols = max >= 6 ? Math.ceil(max / 2) : max;
       return (
-        <div className="rating-buttons" role="group">
-          {options.map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`rating-btn${current === n ? ' selected' : ''}`}
-              onClick={() => onChange(n)}
-            >
-              {n}
-            </button>
-          ))}
+        <div
+          className="rating-buttons"
+          role="group"
+          aria-label="評価"
+          style={{ '--rating-count': max, '--rating-cols': cols } as CSSProperties}
+        >
+          {options.map((n) => {
+            const label = question.scaleLabels?.[n - 1] ?? '';
+            return (
+              <button
+                key={n}
+                type="button"
+                aria-pressed={current === n}
+                className={`rating-btn${current === n ? ' selected' : ''}`}
+                onClick={() => onChange(n)}
+              >
+                <span className="rating-num">{n}</span>
+                {label && <span className="rating-point-label">{label}</span>}
+              </button>
+            );
+          })}
         </div>
       );
     }
