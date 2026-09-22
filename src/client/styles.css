@@ -1318,3 +1318,150 @@ label {
     justify-content: space-between;
   }
 }
+
+/* ---------- 回答フロー: ステップ表示・名前・完了サマリー ---------- */
+
+.respondent-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-top: 8px;
+}
+
+.respondent-name {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.respondent-bar .switch-name-link {
+  margin-top: 0;
+}
+
+.team-step-nav {
+  margin-bottom: 12px;
+}
+
+.team-step-count {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* 折り返さず横スクロール。チーム数によらず高さが一定になる */
+.team-step-list {
+  list-style: none;
+  margin: 0;
+  padding: 3px 3px 6px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.team-step-list > li {
+  flex: 0 0 auto;
+}
+
+.team-step-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 10em;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.team-step-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-step-chip.is-current {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: default;
+}
+
+.team-step-check {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.team-step-chip:hover:not(:disabled):not(.is-current) {
+  border-color: var(--accent);
+}
+
+.team-step-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.team-step-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.completion-respondent {
+  margin: 0 0 4px;
+}
+
+.completion-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  text-align: left;
+  border-top: 1px solid var(--border);
+}
+
+.completion-summary-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.completion-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.completion-summary-team {
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.completion-summary-head .btn-link {
+  flex-shrink: 0;
+}
+
+.completion-summary-scores {
+  list-style: none;
+  padding: 0;
+  margin: 2px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.completion-summary-value {
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
