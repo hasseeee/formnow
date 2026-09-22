@@ -36,7 +36,10 @@ export default function RespondentsTab({ eventId, respondents, teams, onSaved }:
   };
 
   const addRow = () => {
-    setRows((prev) => [...prev, { name: '', role: 'member', teamId: null, sortOrder: prev.length }]);
+    setRows((prev) => [
+      ...prev,
+      { name: '', role: 'member', teamId: null, sortOrder: prev.length },
+    ]);
   };
 
   const removeRow = (index: number) => {

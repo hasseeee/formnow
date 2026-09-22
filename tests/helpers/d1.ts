@@ -15,7 +15,7 @@ class FakeStatement {
   constructor(
     private readonly db: DatabaseSync,
     private readonly sql: string,
-    private readonly params: Param[] = []
+    private readonly params: Param[] = [],
   ) {}
 
   bind(...values: unknown[]): FakeStatement {
@@ -33,7 +33,10 @@ class FakeStatement {
 
   async run(): Promise<{ success: true; meta: { changes: number; last_row_id: number } }> {
     const info = this.db.prepare(this.sql).run(...this.params);
-    return { success: true, meta: { changes: Number(info.changes), last_row_id: Number(info.lastInsertRowid) } };
+    return {
+      success: true,
+      meta: { changes: Number(info.changes), last_row_id: Number(info.lastInsertRowid) },
+    };
   }
 
   /** batch() から同期的に呼ぶための入口 */
@@ -50,10 +53,16 @@ class FakeD1 {
   }
 
   /** 本物のD1と同じく、batch は1トランザクション。途中で失敗したら全体を巻き戻す */
-  async batch(statements: FakeStatement[]): Promise<{ results: unknown[]; success: true; meta: Record<string, unknown> }[]> {
+  async batch(
+    statements: FakeStatement[],
+  ): Promise<{ results: unknown[]; success: true; meta: Record<string, unknown> }[]> {
     this.db.exec('BEGIN');
     try {
-      const out = statements.map((s) => ({ results: s.allSync(), success: true as const, meta: {} }));
+      const out = statements.map((s) => ({
+        results: s.allSync(),
+        success: true as const,
+        meta: {},
+      }));
       this.db.exec('COMMIT');
       return out;
     } catch (e) {

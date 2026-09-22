@@ -1,7 +1,14 @@
 import { useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Form, FormKind, FormStatus } from '../../../shared/types';
-import { ApiRequestError, createForm, deleteForm, getForm, saveQuestions, type QuestionInput } from '../../api';
+import {
+  ApiRequestError,
+  createForm,
+  deleteForm,
+  getForm,
+  saveQuestions,
+  type QuestionInput,
+} from '../../api';
 import KebabMenu from '../../components/KebabMenu';
 import { useToast } from '../../components/Toast';
 
@@ -79,7 +86,9 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
   };
 
   const handleDelete = async (form: Form) => {
-    const ok = window.confirm(`「${form.title || '無題のフォーム'}」を削除しますか？回答データもすべて削除されます。`);
+    const ok = window.confirm(
+      `「${form.title || '無題のフォーム'}」を削除しますか？回答データもすべて削除されます。`,
+    );
     if (!ok) return;
     try {
       await deleteForm(form.id);

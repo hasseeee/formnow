@@ -42,7 +42,9 @@ export default function FormFlow({
       ? initialRespondentId
       : null;
 
-  const [phase, setPhase] = useState<Phase>(validInitialRespondentId !== null ? 'loading' : 'select-name');
+  const [phase, setPhase] = useState<Phase>(
+    validInitialRespondentId !== null ? 'loading' : 'select-name',
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [respondentId, setRespondentId] = useState<number | null>(validInitialRespondentId);
   const [answersByTeam, setAnswersByTeam] = useState<Record<number, AnswerMap>>({});
@@ -59,7 +61,10 @@ export default function FormFlow({
     return sorted.filter((t) => t.id !== respondent.teamId);
   }, [view, respondentId]);
 
-  const questions = useMemo(() => [...view.questions].sort((a, b) => a.sortOrder - b.sortOrder), [view]);
+  const questions = useMemo(
+    () => [...view.questions].sort((a, b) => a.sortOrder - b.sortOrder),
+    [view],
+  );
 
   // 名前決定後: 保存済み回答を取得して再開位置を決める
   useEffect(() => {
@@ -187,7 +192,11 @@ export default function FormFlow({
       <header className="form-header">
         <h1>{view.form.title}</h1>
         <Markdown source={view.form.descriptionMd} />
-        <button type="button" className="btn btn-link switch-name-link" onClick={handleResetRespondent}>
+        <button
+          type="button"
+          className="btn btn-link switch-name-link"
+          onClick={handleResetRespondent}
+        >
           別の名前で回答する
         </button>
       </header>

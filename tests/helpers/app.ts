@@ -10,7 +10,12 @@ export interface TestClient {
   env: Env;
   /** waitUntil に渡された処理（シート追記など）がすべて終わるのを待つ */
   settle(): Promise<void>;
-  request(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<Response>;
+  request(
+    method: string,
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Promise<Response>;
   admin(method: string, path: string, body?: unknown): Promise<Response>;
   adminJson<T>(method: string, path: string, body?: unknown): Promise<T>;
 }

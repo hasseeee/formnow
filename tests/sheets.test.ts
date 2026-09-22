@@ -97,13 +97,20 @@ describe('base64UrlEncodeString', () => {
 });
 
 function decodeBase64Url(input: string): string {
-  const base64 = input.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(input.length / 4) * 4, '=');
+  const base64 = input
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(input.length / 4) * 4, '=');
   return atob(base64);
 }
 
 describe('buildJwtSigningInput', () => {
   it('header.payload の base64url を "." で結合する', () => {
-    const result = buildJwtSigningInput('svc@example.iam.gserviceaccount.com', 'scope-a', 1700000000);
+    const result = buildJwtSigningInput(
+      'svc@example.iam.gserviceaccount.com',
+      'scope-a',
+      1700000000,
+    );
     const parts = result.split('.');
     expect(parts).toHaveLength(2);
     const header = JSON.parse(decodeBase64Url(parts[0]));
@@ -126,7 +133,14 @@ describe('buildResponseHeaderRow / buildResponseDataRow', () => {
   ];
 
   it('ヘッダー行はMarkdownを平文化したラベルを含む', () => {
-    expect(buildResponseHeaderRow(questions)).toEqual(['回答者', 'チーム', '送信日時', '技術力', '感想', '合計スコア']);
+    expect(buildResponseHeaderRow(questions)).toEqual([
+      '回答者',
+      'チーム',
+      '送信日時',
+      '技術力',
+      '感想',
+      '合計スコア',
+    ]);
   });
 
   it('データ行は回答値とスコアを含む', () => {
@@ -163,7 +177,7 @@ describe('buildSummarySheetRows', () => {
         { rank: 2, teamName: 'チームB', count: 1, sum: 5, avg: 5, questionAvgs: { 1: 5 } },
       ],
       scoredQuestions,
-      []
+      [],
     );
     expect(rows).toEqual([
       ['順位', 'チーム', '回答数', '平均', '合計', '技術力'],
@@ -184,7 +198,7 @@ describe('buildSummarySheetRows', () => {
             { teamName: 'チームB', value: null, rank: null },
           ],
         },
-      ]
+      ],
     );
     expect(rows).toEqual([
       ['順位', 'チーム', '回答数', '平均', '合計', '技術力'],
@@ -201,7 +215,7 @@ describe('buildSummarySheetRows', () => {
     const rows = buildSummarySheetRows(
       [{ rank: null, teamName: 'チームC', count: 0, sum: 0, avg: null, questionAvgs: {} }],
       scoredQuestions,
-      []
+      [],
     );
     expect(rows).toEqual([
       ['順位', 'チーム', '回答数', '平均', '合計', '技術力'],

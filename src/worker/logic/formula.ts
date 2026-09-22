@@ -92,7 +92,7 @@ class Parser {
 
   constructor(
     private readonly tokens: Token[],
-    private readonly vars: Record<string, number>
+    private readonly vars: Record<string, number>,
   ) {}
 
   private peek(): Token {

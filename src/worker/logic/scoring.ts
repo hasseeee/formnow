@@ -59,7 +59,7 @@ export function numericValue(question: Question, value: AnswerValue): number | n
 /** 回答1件のスコア = Σ(数値化した回答値 × 質問weight)。採点対象外の質問は無視する。 */
 export function responseScore(
   questions: Question[],
-  answers: { questionId: number; value: AnswerValue }[]
+  answers: { questionId: number; value: AnswerValue }[],
 ): number {
   const questionMap = new Map(questions.map((q) => [q.id, q]));
   let total = 0;

@@ -16,7 +16,10 @@ function isUnknownVariableError(e: unknown): boolean {
  * 公開API (GET /api/forms/:slug) と管理APIのプレビュー (GET /api/admin/forms/:id/preview) の
  * 両方から呼び出される共通ロジック。draft/closed の可否判定は呼び出し側の責務とする。
  */
-export async function buildPublicFormView(database: D1Database, form: Form): Promise<PublicFormView> {
+export async function buildPublicFormView(
+  database: D1Database,
+  form: Form,
+): Promise<PublicFormView> {
   const [questions, teams, respondents] = await Promise.all([
     db.listQuestions(database, form.id),
     db.listTeams(database, form.eventId),
@@ -36,7 +39,10 @@ export async function buildPublicFormView(database: D1Database, form: Form): Pro
 }
 
 /** フォームのチーム別集計 (GET /api/admin/forms/:id/summary と同じ計算)。フォームが無ければ null。 */
-export async function computeFormSummary(database: D1Database, formId: number): Promise<FormSummary | null> {
+export async function computeFormSummary(
+  database: D1Database,
+  formId: number,
+): Promise<FormSummary | null> {
   const form = await db.getFormById(database, formId);
   if (!form) return null;
 
@@ -55,7 +61,10 @@ export async function computeFormSummary(database: D1Database, formId: number): 
 }
 
 /** イベント単位の自由計算式の結果 (GET /api/admin/events/:id/formula-results と同じ計算)。イベントが無ければ null。 */
-export async function computeFormulaResults(database: D1Database, eventId: number): Promise<FormulaResults | null> {
+export async function computeFormulaResults(
+  database: D1Database,
+  eventId: number,
+): Promise<FormulaResults | null> {
   const event = await db.getEvent(database, eventId);
   if (!event) return null;
 

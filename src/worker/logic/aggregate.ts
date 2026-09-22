@@ -26,7 +26,9 @@ export function sortByRank<T extends { rank: number | null }>(items: T[]): T[] {
  * value 降順で順位付けする。同点は同順位（標準競技順位: 1,1,3 方式）。
  * value が null のエントリは avg=null 相当として rank=null になる。
  */
-export function computeRanks(entries: { id: number; value: number | null }[]): Map<number, number | null> {
+export function computeRanks(
+  entries: { id: number; value: number | null }[],
+): Map<number, number | null> {
   const sorted = [...entries].sort((a, b) => {
     if (a.value === null && b.value === null) return 0;
     if (a.value === null) return 1;
@@ -63,7 +65,7 @@ export function computeRanks(entries: { id: number; value: number | null }[]): M
 export function aggregateTeamSummaries(
   responses: AggregateResponseInput[],
   questions: Question[],
-  teams: Team[]
+  teams: Team[],
 ): TeamSummary[] {
   const scoredQuestions = questions.filter((q) => isScorable(q));
 

@@ -11,7 +11,9 @@ describe('planMergeUpsert', () => {
 
   it('id無しでも同名の既存行があれば更新扱いにする', () => {
     const existing: MergeExistingRow[] = [{ id: 1, matchKey: 'チームA' }];
-    const items: MergeItemInput<{ v: string }>[] = [{ matchKey: 'チームA', data: { v: 'updated' } }];
+    const items: MergeItemInput<{ v: string }>[] = [
+      { matchKey: 'チームA', data: { v: 'updated' } },
+    ];
     const plan = planMergeUpsert(existing, items);
     expect(plan).toEqual([{ action: 'update', id: 1, data: { v: 'updated' } }]);
   });
@@ -38,14 +40,18 @@ describe('planMergeUpsert', () => {
 
   it('存在しないidが指定された場合、matchKeyで解決を試みる', () => {
     const existing: MergeExistingRow[] = [{ id: 5, matchKey: 'チームA' }];
-    const items: MergeItemInput<{ v: string }>[] = [{ id: 999, matchKey: 'チームA', data: { v: 'x' } }];
+    const items: MergeItemInput<{ v: string }>[] = [
+      { id: 999, matchKey: 'チームA', data: { v: 'x' } },
+    ];
     const plan = planMergeUpsert(existing, items);
     expect(plan).toEqual([{ action: 'update', id: 5, data: { v: 'x' } }]);
   });
 
   it('存在しないid・matchKeyも不一致なら追加する', () => {
     const existing: MergeExistingRow[] = [{ id: 5, matchKey: 'チームA' }];
-    const items: MergeItemInput<{ v: string }>[] = [{ id: 999, matchKey: 'チームZ', data: { v: 'x' } }];
+    const items: MergeItemInput<{ v: string }>[] = [
+      { id: 999, matchKey: 'チームZ', data: { v: 'x' } },
+    ];
     const plan = planMergeUpsert(existing, items);
     expect(plan).toEqual([{ action: 'insert', data: { v: 'x' } }]);
   });

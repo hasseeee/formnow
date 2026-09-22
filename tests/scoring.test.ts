@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isScorable, maxPossibleScore, numericValue, responseScore } from '../src/worker/logic/scoring';
+import {
+  isScorable,
+  maxPossibleScore,
+  numericValue,
+  responseScore,
+} from '../src/worker/logic/scoring';
 import type { Question } from '../src/shared/types';
 
 function makeQuestion(overrides: Partial<Question>): Question {
@@ -29,16 +34,22 @@ describe('isScorable', () => {
   });
 
   it('choice/checkbox はscoreを持つ選択肢が1つもなければ採点対象外', () => {
-    expect(isScorable(makeQuestion({ type: 'choice', options: [{ label: 'A' }, { label: 'B' }] }))).toBe(false);
+    expect(
+      isScorable(makeQuestion({ type: 'choice', options: [{ label: 'A' }, { label: 'B' }] })),
+    ).toBe(false);
     expect(isScorable(makeQuestion({ type: 'checkbox', options: [{ label: 'A' }] }))).toBe(false);
     expect(isScorable(makeQuestion({ type: 'choice', options: null }))).toBe(false);
   });
 
   it('choice/checkbox はscoreを持つ選択肢が1つでもあれば採点対象', () => {
     expect(
-      isScorable(makeQuestion({ type: 'choice', options: [{ label: 'A' }, { label: 'B', score: 5 }] }))
+      isScorable(
+        makeQuestion({ type: 'choice', options: [{ label: 'A' }, { label: 'B', score: 5 }] }),
+      ),
     ).toBe(true);
-    expect(isScorable(makeQuestion({ type: 'checkbox', options: [{ label: 'A', score: 0 }] }))).toBe(true);
+    expect(
+      isScorable(makeQuestion({ type: 'checkbox', options: [{ label: 'A', score: 0 }] })),
+    ).toBe(true);
   });
 });
 
@@ -162,7 +173,10 @@ describe('maxPossibleScore', () => {
   });
 
   it('text/textarea は0として扱う', () => {
-    const questions: Question[] = [makeQuestion({ id: 1, type: 'text' }), makeQuestion({ id: 2, type: 'textarea' })];
+    const questions: Question[] = [
+      makeQuestion({ id: 1, type: 'text' }),
+      makeQuestion({ id: 2, type: 'textarea' }),
+    ];
     expect(maxPossibleScore(questions)).toBe(0);
   });
 

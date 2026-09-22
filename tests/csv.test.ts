@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CSV_BOM, escapeCsvField, escapeFormulaInjection, stripMarkdown, toCsv, toCsvRow } from '../src/worker/logic/csv';
+import {
+  CSV_BOM,
+  escapeCsvField,
+  escapeFormulaInjection,
+  stripMarkdown,
+  toCsv,
+  toCsvRow,
+} from '../src/worker/logic/csv';
 
 describe('escapeCsvField', () => {
   it('特殊文字を含まない場合はそのまま返す', () => {
@@ -46,7 +53,7 @@ describe('toCsvRow / toCsv', () => {
 });
 
 describe('escapeFormulaInjection', () => {
-  it('= + - @ タブで始まる文字列に \' を付与する', () => {
+  it("= + - @ タブで始まる文字列に ' を付与する", () => {
     expect(escapeFormulaInjection('=SUM(A1:A2)')).toBe("'=SUM(A1:A2)");
     expect(escapeFormulaInjection('+1+1')).toBe("'+1+1");
     expect(escapeFormulaInjection('-cmd|calc')).toBe("'-cmd|calc");

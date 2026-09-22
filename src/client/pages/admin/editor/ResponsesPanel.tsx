@@ -13,7 +13,10 @@ import { useToast } from '../../../components/Toast';
 import { formatScore } from '../../../lib/format';
 
 function stripMarkdown(source: string): string {
-  return source.replace(/[#*_`>[\]()~-]/g, ' ').replace(/\s+/g, ' ').trim();
+  return source
+    .replace(/[#*_`>[\]()~-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 const SCORABLE_TYPES = new Set(['rating', 'number', 'choice', 'checkbox']);
@@ -69,7 +72,9 @@ export default function ResponsesPanel({ formId, questions }: Props) {
     try {
       const result = await syncSheets(formId);
       setSyncMessage(
-        result.rows !== undefined ? `${result.rows}件を同期しました` : 'シートへの同期が完了しました。',
+        result.rows !== undefined
+          ? `${result.rows}件を同期しました`
+          : 'シートへの同期が完了しました。',
       );
     } catch (err) {
       setSyncMessage(err instanceof ApiRequestError ? err.message : '同期に失敗しました。');
