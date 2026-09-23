@@ -650,15 +650,6 @@ label {
   margin: 0;
 }
 
-.completion-team-list {
-  list-style: none;
-  padding: 0;
-  margin: 16px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 /* ---------- 管理画面 ---------- */
 
 .admin-shell {
