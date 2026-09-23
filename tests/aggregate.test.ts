@@ -430,6 +430,38 @@ describe('computeQuestionDistributions', () => {
     ]);
   });
 
+  it('同じラベルの選択肢が2つあっても行は1つで、件数は二重に数えない', () => {
+    const options = [{ label: 'ぜひ' }, { label: 'ぜひ' }, { label: 'うーん' }];
+    const questions = [makeQuestion({ id: 1, type: 'choice', options, maxScore: null })];
+    expect(computeQuestionDistributions([res([[1, 'ぜひ']])], questions)).toEqual([
+      {
+        questionId: 1,
+        buckets: [
+          { label: 'ぜひ', count: 1 },
+          { label: 'うーん', count: 0 },
+        ],
+        otherCount: 0,
+      },
+    ]);
+  });
+
+  it('rating・number に空文字が入っていたら「その他」に数える', () => {
+    const questions = [
+      makeQuestion({ id: 1, sortOrder: 1, type: 'rating', maxScore: 3 }),
+      makeQuestion({ id: 2, sortOrder: 2, type: 'number', maxScore: 2 }),
+    ];
+    const result = computeQuestionDistributions(
+      [
+        res([
+          [1, ''],
+          [2, ''],
+        ]),
+      ],
+      questions,
+    );
+    expect(result.map((d) => d.otherCount)).toEqual([1, 1]);
+  });
+
   it('text・checkbox の質問は含めず、質問の並び順（sortOrder）で返す', () => {
     const questions = [
       makeQuestion({ id: 1, sortOrder: 3, type: 'rating', maxScore: 5 }),

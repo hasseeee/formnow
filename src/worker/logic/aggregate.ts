@@ -290,13 +290,17 @@ export function computeQuestionDistributions(
 ): QuestionDistribution[] {
   const result: QuestionDistribution[] = [];
   for (const question of [...questions].sort((a, b) => a.sortOrder - b.sortOrder)) {
-    const keys = distributionKeys(question);
-    if (!keys) continue;
+    const rawKeys = distributionKeys(question);
+    if (!rawKeys) continue;
+    // 同じラベルの選択肢が重なっても行は1つにする
+    const keys = [...new Set(rawKeys)];
     const counts = new Map<number | string, number>(keys.map((k) => [k, 0]));
     let otherCount = 0;
     for (const response of responses) {
       const answer = response.answers.find((a) => a.questionId === question.id);
-      if (!answer || answer.value === '') continue;
+      if (!answer) continue;
+      // choice の空文字は任意質問の未選択なので数えない（rating/number の '' は「その他」）
+      if (question.type === 'choice' && answer.value === '') continue;
       const value = answer.value;
       if ((typeof value === 'number' || typeof value === 'string') && counts.has(value)) {
         counts.set(value, (counts.get(value) ?? 0) + 1);
