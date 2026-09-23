@@ -220,6 +220,8 @@ export interface SummarySheetTeamRow {
   sum: number;
   avg: number | null;
   questionAvgs: Record<number, number>;
+  zAvg: number | null;
+  zRank: number | null;
 }
 
 export interface SummarySheetFormulaSection {
@@ -229,8 +231,9 @@ export interface SummarySheetFormulaSection {
 
 /**
  * 「集計」タブの全行を組み立てる。
- * 順位, チーム, 回答数, 平均, 合計, 質問別平均列 のあと、計算式があれば空行を挟んで
+ * 順位, チーム, 回答数, 平均, 合計, 質問別平均列, 標準化平均, 標準化順位 のあと、計算式があれば空行を挟んで
  * 各計算式のランキング (順位, チーム, 値) を続ける。
+ * 標準化の2列は後から足したため最後に置く (既存の列の位置を変えるとシート側で組んだ参照がずれる)。
  */
 export function buildSummarySheetRows(
   teamRows: SummarySheetTeamRow[],
@@ -244,6 +247,8 @@ export function buildSummarySheetRows(
     '平均',
     '合計',
     ...scoredQuestions.map((q) => stripMarkdown(q.labelMd)),
+    '標準化平均',
+    '標準化順位',
   ];
   const rows: CellValue[][] = [header];
   for (const t of teamRows) {
@@ -254,6 +259,8 @@ export function buildSummarySheetRows(
       t.avg ?? '',
       t.sum,
       ...scoredQuestions.map((q) => t.questionAvgs[q.id] ?? ''),
+      t.zAvg ?? '',
+      t.zRank ?? '',
     ]);
   }
 
@@ -477,6 +484,8 @@ export async function syncFormToSheet(env: Env, formId: number): Promise<{ rows:
     sum: t.sum,
     avg: t.avg,
     questionAvgs: t.questionAvgs,
+    zAvg: t.zAvg,
+    zRank: t.zRank,
   }));
 
   const formulaResults = await computeFormulaResults(env.DB, eventId);

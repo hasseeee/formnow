@@ -108,6 +108,11 @@ export default function ResponsesPanel({ formId, questions, readOnly = false }: 
 
       <section>
         <h2>チーム別ランキング</h2>
+        <p className="muted table-note">
+          「標準化平均」は、甘めに付ける人・辛めに付ける人の癖をならした平均です。回答者ごとに自分の平均を
+          0、ばらつきを 1 にそろえてからチームごとに平均しています（0
+          より大きいほど高い評価）。相互評価のように、チームごとに採点した人が違うときの参考にしてください。
+        </p>
         <div className="table-scroll">
           <table className="data-table">
             <thead>
@@ -117,6 +122,8 @@ export default function ResponsesPanel({ formId, questions, readOnly = false }: 
                 <th>回答数</th>
                 <th>平均</th>
                 <th>合計</th>
+                <th className="num-signed">標準化平均</th>
+                <th>標準化順位</th>
                 {questionIds.map((qid) => (
                   <th key={qid}>{questionLabel(qid)}</th>
                 ))}
@@ -130,6 +137,8 @@ export default function ResponsesPanel({ formId, questions, readOnly = false }: 
                   <td>{t.count}</td>
                   <td>{formatScore(t.avg)}</td>
                   <td>{formatScore(t.sum)}</td>
+                  <td className="num-signed">{formatSigned(t.zAvg)}</td>
+                  <td>{t.zRank ?? '-'}</td>
                   {questionIds.map((qid) => (
                     <td key={qid}>{formatScore(t.questionAvgs[qid] ?? null)}</td>
                   ))}
@@ -137,13 +146,54 @@ export default function ResponsesPanel({ formId, questions, readOnly = false }: 
               ))}
               {summary.teams.length === 0 && (
                 <tr>
-                  <td colSpan={5 + questionIds.length}>まだ回答がありません。</td>
+                  <td colSpan={7 + questionIds.length}>まだ回答がありません。</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
         <p className="muted">満点目安: {formatScore(summary.maxPossibleScore)}</p>
+      </section>
+
+      <section>
+        <h2>回答者ごとの傾向</h2>
+        {summary.respondents.length === 0 ? (
+          <p className="muted">まだ回答がありません。</p>
+        ) : (
+          <>
+            <p className="muted table-note">
+              「全体との差」がプラスなら甘め、マイナスなら辛めです。「ばらつき」が小さい人は、チーム間で点の差をあまり付けていません。
+            </p>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>回答者</th>
+                    <th>回答したチーム数</th>
+                    <th>平均</th>
+                    <th className="num-signed">全体との差</th>
+                    <th title="標準偏差">ばらつき</th>
+                    <th>標準化</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.respondents.map((r) => (
+                    <tr key={r.respondentId}>
+                      <td>{r.respondentName}</td>
+                      <td>{r.count}</td>
+                      <td>{formatScore(r.avg)}</td>
+                      <td className="num-signed">{formatSigned(r.avgDiff)}</td>
+                      <td>{formatScore(r.sd)}</td>
+                      <td className={r.standardized ? undefined : 'muted'}>
+                        {standardizedLabel(r)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
 
       <section>
@@ -180,4 +230,18 @@ export default function ResponsesPanel({ formId, questions, readOnly = false }: 
 function formatAnswerValue(value: number | string[]): string {
   if (Array.isArray(value)) return value.join(', ');
   return String(value);
+}
+
+/** 符号付きの数値表示（+1, -0.5, 0）。null は '-'。小数2桁に丸めて 0 になるものは符号を付けない */
+function formatSigned(n: number | null): string {
+  const text = formatScore(n);
+  if (n === null) return text;
+  if (text === '0' || text === '-0') return '0';
+  return n > 0 ? `+${text}` : text;
+}
+
+/** 回答者ごとの傾向の「標準化」列の文言 */
+function standardizedLabel(r: FormSummary['respondents'][number]): string {
+  if (r.standardized) return '使う';
+  return r.count === 1 ? '使わない（回答が1件）' : '使わない（全部同じ点）';
 }

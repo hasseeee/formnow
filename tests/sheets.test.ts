@@ -174,22 +174,51 @@ describe('buildSummarySheetRows', () => {
   it('チーム集計のみの場合は集計行だけを返す', () => {
     const rows = buildSummarySheetRows(
       [
-        { rank: 1, teamName: 'チームA', count: 2, sum: 18, avg: 9, questionAvgs: { 1: 9 } },
-        { rank: 2, teamName: 'チームB', count: 1, sum: 5, avg: 5, questionAvgs: { 1: 5 } },
+        {
+          rank: 1,
+          teamName: 'チームA',
+          count: 2,
+          sum: 18,
+          avg: 9,
+          questionAvgs: { 1: 9 },
+          zAvg: 1,
+          zRank: 1,
+        },
+        {
+          rank: 2,
+          teamName: 'チームB',
+          count: 1,
+          sum: 5,
+          avg: 5,
+          questionAvgs: { 1: 5 },
+          zAvg: null,
+          zRank: null,
+        },
       ],
       scoredQuestions,
       [],
     );
     expect(rows).toEqual([
-      ['順位', 'チーム', '回答数', '平均', '合計', '技術力'],
-      [1, 'チームA', 2, 9, 18, 9],
-      [2, 'チームB', 1, 5, 5, 5],
+      ['順位', 'チーム', '回答数', '平均', '合計', '技術力', '標準化平均', '標準化順位'],
+      [1, 'チームA', 2, 9, 18, 9, 1, 1],
+      [2, 'チームB', 1, 5, 5, 5, '', ''],
     ]);
   });
 
   it('計算式がある場合は空行を挟んでランキングを追加する', () => {
     const rows = buildSummarySheetRows(
-      [{ rank: 1, teamName: 'チームA', count: 1, sum: 10, avg: 10, questionAvgs: { 1: 10 } }],
+      [
+        {
+          rank: 1,
+          teamName: 'チームA',
+          count: 1,
+          sum: 10,
+          avg: 10,
+          questionAvgs: { 1: 10 },
+          zAvg: null,
+          zRank: null,
+        },
+      ],
       scoredQuestions,
       [
         {
@@ -202,8 +231,8 @@ describe('buildSummarySheetRows', () => {
       ],
     );
     expect(rows).toEqual([
-      ['順位', 'チーム', '回答数', '平均', '合計', '技術力'],
-      [1, 'チームA', 1, 10, 10, 10],
+      ['順位', 'チーム', '回答数', '平均', '合計', '技術力', '標準化平均', '標準化順位'],
+      [1, 'チームA', 1, 10, 10, 10, '', ''],
       [],
       ['計算式: 最終順位'],
       ['順位', 'チーム', '値'],
@@ -214,13 +243,24 @@ describe('buildSummarySheetRows', () => {
 
   it('回答数0のチームはavg/rankが空文字になる', () => {
     const rows = buildSummarySheetRows(
-      [{ rank: null, teamName: 'チームC', count: 0, sum: 0, avg: null, questionAvgs: {} }],
+      [
+        {
+          rank: null,
+          teamName: 'チームC',
+          count: 0,
+          sum: 0,
+          avg: null,
+          questionAvgs: {},
+          zAvg: null,
+          zRank: null,
+        },
+      ],
       scoredQuestions,
       [],
     );
     expect(rows).toEqual([
-      ['順位', 'チーム', '回答数', '平均', '合計', '技術力'],
-      ['', 'チームC', 0, '', 0, ''],
+      ['順位', 'チーム', '回答数', '平均', '合計', '技術力', '標準化平均', '標準化順位'],
+      ['', 'チームC', 0, '', 0, '', '', ''],
     ]);
   });
 });

@@ -1178,6 +1178,18 @@ label {
   font-size: 0.8rem;
 }
 
+/* 表の上の説明文（.muted と併用） */
+.table-note {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* 符号付きの数値（標準化平均・全体との差）。数字の幅をそろえる */
+.data-table .num-signed {
+  font-variant-numeric: tabular-nums;
+}
+
 .response-list {
   list-style: none;
   padding: 0;

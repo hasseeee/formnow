@@ -1,7 +1,14 @@
 // 集計系のサービス関数。admin.ts (REST API) と mcp/tools.ts (MCPツール) の両方から
 // 呼び出される共通ロジックをここに集約し、重複実装を避ける。
 import * as db from './db';
-import { aggregateTeamSummaries, computeRanks, sortByRank } from './logic/aggregate';
+import {
+  aggregateTeamSummaries,
+  computeRanks,
+  computeRespondentSummaries,
+  computeStandardizedTeamAverages,
+  sortByRank,
+  withStandardized,
+} from './logic/aggregate';
 import { evaluate } from './logic/formula';
 import { maxPossibleScore } from './logic/scoring';
 import type { Form, FormSummary, FormulaResults, PublicFormView } from '../shared/types';
@@ -46,17 +53,22 @@ export async function computeFormSummary(
   const form = await db.getFormById(database, formId);
   if (!form) return null;
 
-  const [questions, teams, responses] = await Promise.all([
+  const [questions, teams, responses, respondents] = await Promise.all([
     db.listQuestions(database, formId),
     db.listTeams(database, form.eventId),
     db.listResponsesForScoring(database, formId),
+    db.listRespondents(database, form.eventId),
   ]);
 
   return {
     formId: form.id,
     formSlug: form.slug,
     maxPossibleScore: maxPossibleScore(questions),
-    teams: aggregateTeamSummaries(responses, questions, teams),
+    teams: withStandardized(
+      aggregateTeamSummaries(responses, questions, teams),
+      computeStandardizedTeamAverages(responses, questions, teams),
+    ),
+    respondents: computeRespondentSummaries(responses, questions, respondents),
   };
 }
 
@@ -93,6 +105,11 @@ export async function computeFormulaResults(
       }
       vars[`${form.slug}_sum`] = s.sum;
       vars[`${form.slug}_count`] = s.count;
+    }
+    // 標準化平均も _avg と同じく、値がない (null) チームには登録しない
+    for (const [teamId, { zAvg }] of computeStandardizedTeamAverages(responses, questions, teams)) {
+      const vars = varsByTeam.get(teamId);
+      if (vars && zAvg !== null) vars[`${form.slug}_zavg`] = zAvg;
     }
   }
 
