@@ -1,10 +1,22 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { clearAdminToken, getAdminToken, setAdminToken, setUnauthorizedListener } from '../../api';
+import type { AdminRole } from '../../../shared/types';
+import {
+  ApiRequestError,
+  clearAdminToken,
+  getAdminMe,
+  getAdminToken,
+  setAdminToken,
+  setUnauthorizedListener,
+} from '../../api';
+import { AdminRoleContext } from './adminRole';
 
 export default function AdminTokenGate() {
   const [token, setToken] = useState<string | null>(() => getAdminToken());
   const [input, setInput] = useState('');
+  // 役割はどのトークンで取得したかと組にして持つ（入り直したときに古い役割を使わないため）
+  const [me, setMe] = useState<{ token: string; role: AdminRole } | null>(null);
+  const [meError, setMeError] = useState<{ token: string; message: string } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,6 +25,30 @@ export default function AdminTokenGate() {
     });
     return () => setUnauthorizedListener(null);
   }, []);
+
+  // トークンが変わるたびに役割を問い合わせる。誤ったトークンは 401 でログイン画面に戻る
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    getAdminMe()
+      .then(({ role }) => {
+        if (!cancelled) setMe({ token, role });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof ApiRequestError && err.status === 401) return;
+        setMeError({
+          token,
+          message: err instanceof ApiRequestError ? err.message : '読み込みに失敗しました。',
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const role = me && me.token === token ? me.role : null;
+  const roleError = meError && meError.token === token ? meError.message : null;
 
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();
@@ -34,11 +70,11 @@ export default function AdminTokenGate() {
       <div className="page-container">
         <form className="card token-form" onSubmit={handleLogin}>
           <h1>FormNow 管理画面</h1>
-          <p className="muted">管理トークンを入力してください。</p>
+          <p className="muted">管理トークン、または閲覧用トークンを入力してください。</p>
           <input
             type="password"
             className="text-input"
-            placeholder="管理トークン"
+            placeholder="トークン"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             autoFocus
@@ -54,15 +90,26 @@ export default function AdminTokenGate() {
   return (
     <div className="admin-shell">
       <header className="admin-header">
-        <Link to="/admin" className="admin-brand">
-          FormNow 管理
-        </Link>
+        <div className="admin-header-left">
+          <Link to="/admin" className="admin-brand">
+            FormNow 管理
+          </Link>
+          {role === 'viewer' && <span className="role-badge">閲覧専用</span>}
+        </div>
         <button type="button" className="btn btn-ghost" onClick={handleLogout}>
           ログアウト
         </button>
       </header>
       <main className="admin-main">
-        <Outlet />
+        {role ? (
+          <AdminRoleContext.Provider value={role}>
+            <Outlet />
+          </AdminRoleContext.Provider>
+        ) : roleError ? (
+          <p className="form-error">{roleError}</p>
+        ) : (
+          <p className="muted">読み込み中…</p>
+        )}
       </main>
     </div>
   );
