@@ -1087,9 +1087,8 @@ label {
   line-height: 1.6;
 }
 
-/* 符号付きの数値（標準化平均・全体との差）。桁をそろえて右寄せ */
+/* 符号付きの数値（標準化平均・全体との差）。数字の幅をそろえる */
 .data-table .num-signed {
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 

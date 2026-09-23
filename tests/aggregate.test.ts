@@ -310,6 +310,25 @@ describe('回答者ごとの傾向と標準化平均', () => {
       expect(z.get(B)?.zAvg).toBeCloseTo(0);
       expect([z.get(A)?.zRank, z.get(B)?.zRank, z.get(C)?.zRank]).toEqual([1, 1, null]);
     });
+
+    it('数学的に同じ標準化平均が浮動小数の誤差でずれても、同順位になる', () => {
+      // 3人とも {1, 2, 4} を配点。A = 1+1+4、B = 2+2+2 で数学的には同じ標準化平均だが、
+      // z の足し算の誤差で A ≈ -0.26726124191242456、B ≈ -0.2672612419124245 とずれる
+      const responses = [
+        scored(P, A, 1),
+        scored(P, B, 2),
+        scored(P, C, 4),
+        scored(Q, A, 1),
+        scored(Q, B, 2),
+        scored(Q, C, 4),
+        scored(R, A, 4),
+        scored(R, B, 2),
+        scored(R, C, 1),
+      ];
+      const z = computeStandardizedTeamAverages(responses, questions, teams);
+      expect(z.get(A)?.zAvg).not.toBe(z.get(B)?.zAvg); // 誤差が実際に出ていること（API の値は丸めない）
+      expect([z.get(C)?.zRank, z.get(A)?.zRank, z.get(B)?.zRank]).toEqual([1, 2, 2]);
+    });
   });
 
   describe('withStandardized', () => {
