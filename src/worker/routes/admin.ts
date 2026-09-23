@@ -8,20 +8,35 @@ import { responseScore } from '../logic/scoring';
 import { CSV_BOM, stripMarkdown, toCsv } from '../logic/csv';
 import { SheetsConfigError, SheetsApiError, syncFormToSheet } from '../sheets';
 import { timingSafeEqual } from '../logic/security';
-import type { ApiError, FormulaResults } from '../../shared/types';
+import type { AdminMe, AdminRole, ApiError, FormulaResults } from '../../shared/types';
 
-export const adminRoutes = new Hono<{ Bindings: Env }>();
+export const adminRoutes = new Hono<{ Bindings: Env; Variables: { role: AdminRole } }>();
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
+/**
+ * 認証と役割の判定。ADMIN_TOKEN はすべての操作、VIEWER_TOKEN（任意）は GET / HEAD だけができる。
+ * 書き込みの可否はメソッドだけで決まるので、副作用のある操作を GET で作らないこと。
+ */
 adminRoutes.use('*', async (c, next) => {
   const auth = c.req.header('Authorization') ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : '';
-  if (!token || !timingSafeEqual(token, c.env.ADMIN_TOKEN)) {
+  // 短絡評価で片方を省かず、両方とも必ず比較する
+  const isAdmin = timingSafeEqual(token, c.env.ADMIN_TOKEN);
+  const isViewer = timingSafeEqual(token, c.env.VIEWER_TOKEN);
+  if (!token || (!isAdmin && !isViewer)) {
     return c.json<ApiError>({ error: 'unauthorized' }, 401);
   }
+  // 両方に一致した（ADMIN_TOKEN と VIEWER_TOKEN が同じ値）ときは最小権限の viewer に倒す
+  const role: AdminRole = isViewer ? 'viewer' : 'admin';
+  if (role === 'viewer' && c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+    return c.json<ApiError>({ error: '閲覧専用のトークンでは変更できません' }, 403);
+  }
+  c.set('role', role);
   await next();
 });
+
+adminRoutes.get('/me', (c) => c.json<AdminMe>({ role: c.get('role') }));
 
 function parseIdParam(raw: string): number | null {
   const n = Number(raw);
