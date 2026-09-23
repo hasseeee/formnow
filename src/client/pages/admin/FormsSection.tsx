@@ -16,6 +16,8 @@ interface Props {
   eventId: number;
   forms: Form[];
   onChanged: () => void;
+  /** 閲覧専用のとき true。作成ボタンと「⋯」（複製・削除）を隠す */
+  readOnly?: boolean;
 }
 
 const STATUS_LABEL: Record<FormStatus, string> = {
@@ -24,7 +26,7 @@ const STATUS_LABEL: Record<FormStatus, string> = {
   closed: '締切',
 };
 
-export default function FormsSection({ eventId, forms, onChanged }: Props) {
+export default function FormsSection({ eventId, forms, onChanged, readOnly = false }: Props) {
   const navigate = useNavigate();
   const toast = useToast();
   const [creating, setCreating] = useState<FormKind | null>(null);
@@ -101,27 +103,33 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
 
   return (
     <section className="forms-section">
-      <div className="create-buttons">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => handleCreate('judge')}
-          disabled={creating !== null}
-        >
-          {creating === 'judge' ? '作成中…' : '＋ 審査員フォーム'}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => handleCreate('peer')}
-          disabled={creating !== null}
-        >
-          {creating === 'peer' ? '作成中…' : '＋ 相互評価フォーム'}
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="create-buttons">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleCreate('judge')}
+            disabled={creating !== null}
+          >
+            {creating === 'judge' ? '作成中…' : '＋ 審査員フォーム'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleCreate('peer')}
+            disabled={creating !== null}
+          >
+            {creating === 'peer' ? '作成中…' : '＋ 相互評価フォーム'}
+          </button>
+        </div>
+      )}
 
       {forms.length === 0 ? (
-        <p className="muted">フォームがまだありません。上のボタンから作成してください。</p>
+        <p className="muted">
+          {readOnly
+            ? 'フォームがまだありません。'
+            : 'フォームがまだありません。上のボタンから作成してください。'}
+        </p>
       ) : (
         <div className="form-cards">
           {forms.map((f) => (
@@ -151,15 +159,17 @@ export default function FormsSection({ eventId, forms, onChanged }: Props) {
                 >
                   URLをコピー
                 </button>
-                <KebabMenu
-                  items={[
-                    {
-                      label: duplicatingId === f.id ? '複製中…' : '複製',
-                      onClick: () => handleDuplicate(f),
-                    },
-                    { label: '削除', onClick: () => handleDelete(f), danger: true },
-                  ]}
-                />
+                {!readOnly && (
+                  <KebabMenu
+                    items={[
+                      {
+                        label: duplicatingId === f.id ? '複製中…' : '複製',
+                        onClick: () => handleDuplicate(f),
+                      },
+                      { label: '削除', onClick: () => handleDelete(f), danger: true },
+                    ]}
+                  />
+                )}
               </div>
             </div>
           ))}
