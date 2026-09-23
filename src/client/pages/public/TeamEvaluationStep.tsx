@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { AnswerValue, PublicQuestion, Team } from '../../../shared/types';
 import { ApiRequestError } from '../../api';
 import QuestionField from './QuestionField';
@@ -10,8 +10,12 @@ interface Props {
   questions: PublicQuestion[];
   initialAnswers: AnswerMap;
   progressLabel: string;
+  /** 送信ボタンの文言（保存後の遷移先に合わせて呼び出し側が決める） */
+  submitLabel: string;
   onSubmit: (answers: AnswerMap) => Promise<void>;
   onPrev?: () => void;
+  /** 入力が変わるたびに呼ぶ（チームを移っても入力途中の内容を残すため） */
+  onAnswersChange?: (answers: AnswerMap) => void;
   submitting: boolean;
 }
 
@@ -20,16 +24,38 @@ export default function TeamEvaluationStep({
   questions,
   initialAnswers,
   progressLabel,
+  submitLabel,
   onSubmit,
   onPrev,
+  onAnswersChange,
   submitting,
 }: Props) {
   const [answers, setAnswers] = useState<AnswerMap>(() => ({ ...initialAnswers }));
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // エラーを出すたびに +1 する。同じ文言が続いても中身を作り直し、2 回目以降も読み上げられるようにする
+  const [formErrorSeq, setFormErrorSeq] = useState(0);
+  // 検証に失敗するたびに +1 する。エラー表示が DOM に出た後の描画で最初のエラー項目へスクロールする
+  const [scrollRequest, setScrollRequest] = useState(0);
+  const questionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRequest === 0) return;
+    // QuestionField はエラー時に外枠へ has-error を付ける。DOM 順＝質問の並び順なので最初の1件が一番上
+    const field = questionsRef.current?.querySelector<HTMLElement>('.question-field.has-error');
+    if (!field) return;
+    field
+      .querySelector<HTMLElement>('input, textarea, select, button')
+      ?.focus({ preventScroll: true });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // プレビューの固定バナーに隠れないよう、上端ではなく縦中央に合わせる
+    field.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [scrollRequest]);
 
   const setAnswer = (questionId: number, value: AnswerValue | null) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    const nextAnswers = { ...answers, [questionId]: value };
+    setAnswers(nextAnswers);
+    onAnswersChange?.(nextAnswers);
     setErrors((prev) => {
       if (!(questionId in prev)) return prev;
       const next = { ...prev };
@@ -71,12 +97,15 @@ export default function TeamEvaluationStep({
     setFormError(null);
     if (!validate()) {
       setFormError('未入力の必須項目があります。すべての必須項目を入力してください。');
+      setFormErrorSeq((n) => n + 1);
+      setScrollRequest((n) => n + 1);
       return;
     }
     try {
       await onSubmit(answers);
     } catch (err) {
       setFormError(err instanceof ApiRequestError ? err.message : '保存に失敗しました。');
+      setFormErrorSeq((n) => n + 1);
     }
   };
 
@@ -84,7 +113,7 @@ export default function TeamEvaluationStep({
     <form className="card eval-card" onSubmit={handleSubmit}>
       <p className="eval-progress">{progressLabel}</p>
       <h2 className="eval-team-name">{team.name}</h2>
-      <div className="eval-questions">
+      <div className="eval-questions" ref={questionsRef}>
         {questions.map((q) => (
           <QuestionField
             key={q.id}
@@ -96,7 +125,10 @@ export default function TeamEvaluationStep({
         ))}
         {questions.length === 0 && <p className="muted">このフォームには質問がありません。</p>}
       </div>
-      {formError && <p className="form-error">{formError}</p>}
+      {/* 読み上げの対象として登録されるよう role="alert" の要素は常に描画し、中身だけ差し替える */}
+      <p className={formError ? 'form-alert form-error' : 'form-alert'} role="alert">
+        {formError && <span key={formErrorSeq}>{formError}</span>}
+      </p>
       <div className="eval-actions">
         {onPrev && (
           <button
@@ -109,7 +141,7 @@ export default function TeamEvaluationStep({
           </button>
         )}
         <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? '保存中…' : 'このチームの評価を保存して次へ'}
+          {submitting ? '保存中…' : submitLabel}
         </button>
       </div>
     </form>

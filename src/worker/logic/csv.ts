@@ -36,17 +36,4 @@ export function toCsv(rows: string[][]): string {
   return rows.map(toCsvRow).join('\r\n');
 }
 
-/** Markdownの強調記号などを除去し平文化する（簡易実装）。 */
-export function stripMarkdown(md: string): string {
-  return md
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`([^`]*)`/g, '$1')
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/(\*\*\*|\*\*|\*|___|__|_)/g, '')
-    .replace(/^>\s?/gm, '')
-    .replace(/^[-*+]\s+/gm, '')
-    .replace(/\r?\n+/g, ' ')
-    .trim();
-}
+export { stripMarkdown } from '../../shared/plainText';

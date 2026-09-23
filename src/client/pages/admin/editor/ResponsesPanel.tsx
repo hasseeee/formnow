@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { stripMarkdown } from '../../../../shared/plainText';
 import type { FormSummary, Question } from '../../../../shared/types';
 import {
   ApiRequestError,
@@ -11,13 +12,6 @@ import {
 import Markdown from '../../../components/Markdown';
 import { useToast } from '../../../components/Toast';
 import { formatScore } from '../../../lib/format';
-
-function stripMarkdown(source: string): string {
-  return source
-    .replace(/[#*_`>[\]()~-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 const SCORABLE_TYPES = new Set(['rating', 'number', 'choice', 'checkbox']);
 
