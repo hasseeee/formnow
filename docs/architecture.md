@@ -9,7 +9,7 @@ Cloudflare Workers の **Worker 1つ**に、画面・API・MCPサーバーがす
 ```
 ブラウザ ──┬─ /            React の画面（静的ファイル）
            ├─ /api/forms/*   回答者向けAPI（認証なし）
-           ├─ /api/admin/*   管理API（ADMIN_TOKEN 必須）
+           ├─ /api/admin/*   管理API（ADMIN_TOKEN 必須。読み取りだけなら VIEWER_TOKEN も可）
 Claude ────┴─ /mcp           MCPサーバー（MCP_TOKEN 必須）
                     │
                     └─ D1（SQLite）… 正のデータ

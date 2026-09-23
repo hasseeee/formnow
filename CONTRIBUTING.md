@@ -18,6 +18,7 @@ npm ci
 ```
 ADMIN_TOKEN=dev-admin-token
 MCP_TOKEN=dev-mcp-token
+VIEWER_TOKEN=dev-viewer-token
 ```
 
 ```bash
@@ -26,6 +27,7 @@ npm run dev                # http://localhost:5173
 ```
 
 `http://localhost:5173/admin` を開き、`dev-admin-token` でログインできれば準備完了です。
+`dev-viewer-token` で入ると閲覧専用の画面を確認できます。
 
 > **`db:migrate:local` が `_cf_ALARM has 3 columns` というエラーで落ちるとき**
 > `wrangler` と `@cloudflare/vite-plugin` の版がずれています。`git pull` のあと `npm ci` をやり直してください。この2つは必ずセットで更新します。
