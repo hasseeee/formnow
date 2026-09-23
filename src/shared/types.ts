@@ -113,6 +113,29 @@ export interface TeamSummary {
   rank: number | null;
   /** 質問ID→平均スコア（採点対象の質問のみ） */
   questionAvgs: Record<number, number>;
+  /**
+   * 標準化平均: 回答者ごとに自分のスコアを平均0・ばらつき1にそろえた値の、このチームでの平均。
+   * 回答1件だけ・全部同じ点の回答者の回答は使わない。使える回答がなければ null
+   */
+  zAvg: number | null;
+  /** zAvg の降順の順位（同点は同順位）。zAvg が null なら null */
+  zRank: number | null;
+}
+
+/** 回答者ごとの傾向（フォーム単位）。1件以上回答した回答者だけ、名簿順 */
+export interface RespondentSummary {
+  respondentId: number;
+  respondentName: string;
+  /** 回答したチーム数 */
+  count: number;
+  /** この回答者が付けたスコア（回答1件のスコア）の平均 */
+  avg: number;
+  /** avg − フォームの全回答のスコア平均。プラスなら甘め */
+  avgDiff: number;
+  /** スコアの母標準偏差。count が 1 なら null */
+  sd: number | null;
+  /** 標準化平均の計算に使ったか（count ≥ 2 かつ sd > 0） */
+  standardized: boolean;
 }
 
 export interface FormSummary {
@@ -120,6 +143,7 @@ export interface FormSummary {
   formSlug: string;
   maxPossibleScore: number;
   teams: TeamSummary[];
+  respondents: RespondentSummary[];
 }
 
 export interface Formula {
