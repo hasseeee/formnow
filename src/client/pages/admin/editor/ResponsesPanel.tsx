@@ -196,6 +196,18 @@ export default function ResponsesPanel({ formId, questions, readOnly = false }: 
         )}
       </section>
 
+      {summary.questionDistributions.length > 0 && (
+        <section>
+          <h2>質問ごとの分布</h2>
+          <div className="dist-list">
+            {summary.questionDistributions.map((d) => (
+              <DistributionCard key={d.questionId} label={questionLabel(d.questionId)} dist={d} />
+            ))}
+          </div>
+          <p className="muted">上限のない数値の質問と、複数選択の質問は分布を出しません。</p>
+        </section>
+      )}
+
       <section>
         <h2>個別回答</h2>
         {responses.responses.length === 0 && <p className="muted">まだ回答がありません。</p>}
@@ -244,4 +256,35 @@ function formatSigned(n: number | null): string {
 function standardizedLabel(r: FormSummary['respondents'][number]): string {
   if (r.standardized) return '使う';
   return r.count === 1 ? '使わない（回答が1件）' : '使わない（全部同じ点）';
+}
+
+type Distribution = FormSummary['questionDistributions'][number];
+
+/** 質問1つ分の分布。CSS の横棒で区分ごとの件数と割合を出す */
+function DistributionCard({ label, dist }: { label: string; dist: Distribution }) {
+  const rows = [...dist.buckets];
+  if (dist.otherCount > 0) rows.push({ label: 'その他', count: dist.otherCount });
+  const total = rows.reduce((acc, r) => acc + r.count, 0);
+  return (
+    <div className="card dist-card">
+      <h3>{label}</h3>
+      {total === 0 ? (
+        <p className="muted">回答なし</p>
+      ) : (
+        rows.map((r, i) => (
+          <div key={i} className="dist-row">
+            <span className="dist-label" title={r.label}>
+              {r.label}
+            </span>
+            <span className="dist-bar" aria-hidden="true">
+              <span style={{ width: `${(r.count / total) * 100}%` }} />
+            </span>
+            <span className="dist-count">
+              {r.count}件{r.count > 0 && ` (${Math.round((r.count / total) * 100)}%)`}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
+  );
 }

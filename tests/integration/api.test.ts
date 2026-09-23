@@ -434,6 +434,26 @@ describe('集計', () => {
     expect(summary.respondents).toHaveLength(2);
     expect(summary.teams[0].zRank).toBe(1);
   });
+
+  it('質問ごとの分布は評価の質問だけで講評を含まず、技術力は 7〜10 が各1件', async () => {
+    const summary = await client.adminJson<FormSummary>(
+      'GET',
+      `/api/admin/forms/${f.judgeForm.id}/summary`,
+    );
+    expect(summary.questionDistributions.map((d) => d.questionId)).toEqual([
+      f.jq.tech.id,
+      f.jq.design.id,
+    ]);
+    const tech = summary.questionDistributions[0];
+    expect(tech.buckets).toHaveLength(10);
+    expect(tech.buckets.filter((b) => b.count > 0)).toEqual([
+      { label: '7', count: 1 },
+      { label: '8', count: 1 },
+      { label: '9', count: 1 },
+      { label: '10', count: 1 },
+    ]);
+    expect(tech.otherCount).toBe(0);
+  });
 });
 
 describe('データを消さないための約束', () => {

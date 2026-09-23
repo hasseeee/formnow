@@ -351,7 +351,7 @@ export function registerTools(server: McpServer, env: Env): void {
     'get_team_summary',
     {
       description:
-        'フォームのチーム別集計 (回答数・平均・合計・順位・質問別平均・標準化平均と標準化順位) と回答者ごとの傾向 (件数・平均・全体との差・ばらつき) を取得する',
+        'フォームのチーム別集計 (回答数・平均・合計・順位・質問別平均・標準化平均と標準化順位) と回答者ごとの傾向 (件数・平均・全体との差・ばらつき)、質問ごとの分布 (評価・上限のある数値・単一選択の質問で、区分ごとの件数) を取得する',
       inputSchema: { formId: z.number().int() },
     },
     safe(async ({ formId }) => {

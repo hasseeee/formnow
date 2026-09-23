@@ -1181,6 +1181,59 @@ label {
   font-variant-numeric: tabular-nums;
 }
 
+/* 質問ごとの分布（CSS だけの横棒） */
+.dist-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+}
+
+.dist-card {
+  margin-bottom: 0;
+  padding: 16px;
+}
+
+.dist-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.dist-row {
+  display: grid;
+  grid-template-columns: 4.5em 1fr 6.5em;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.875rem;
+  line-height: 1.8;
+}
+
+.dist-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dist-bar {
+  display: block;
+  height: 10px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.dist-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.dist-count {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .response-list {
   list-style: none;
   padding: 0;
