@@ -3,6 +3,7 @@
 import * as db from './db';
 import {
   aggregateTeamSummaries,
+  computeQuestionDistributions,
   computeRanks,
   computeRespondentSummaries,
   computeStandardizedTeamAverages,
@@ -69,6 +70,7 @@ export async function computeFormSummary(
       computeStandardizedTeamAverages(responses, questions, teams),
     ),
     respondents: computeRespondentSummaries(responses, questions, respondents),
+    questionDistributions: computeQuestionDistributions(responses, questions),
   };
 }
 
