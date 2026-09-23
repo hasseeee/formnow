@@ -24,6 +24,7 @@ function makeQuestion(overrides: Partial<PublicQuestion>): PublicQuestion {
     options: null,
     maxScore: 5,
     required: true,
+    scaleLabels: null,
     ...overrides,
   };
 }
