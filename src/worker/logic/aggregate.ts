@@ -1,7 +1,8 @@
-// 純粋関数: 回答リスト＋チームリストからチーム別集計・回答者ごとの傾向・標準化平均を計算する。D1に依存しない。
+// 純粋関数: 回答リスト＋チームリストからチーム別集計・回答者ごとの傾向・標準化平均・質問ごとの分布を計算する。D1に依存しない。
 import type {
   AnswerValue,
   Question,
+  QuestionDistribution,
   Respondent,
   RespondentSummary,
   Team,
@@ -247,4 +248,67 @@ export function withStandardized(
     zAvg: z.get(t.teamId)?.zAvg ?? null,
     zRank: z.get(t.teamId)?.zRank ?? null,
   }));
+}
+
+/** 分布を出す上限の範囲。区分が多すぎると横棒が読めないため */
+const MAX_DISTRIBUTION_BUCKETS = 20;
+
+/** 上限が 1〜20 の整数なら true */
+function isDistributableMax(max: number | null): max is number {
+  return max !== null && Number.isInteger(max) && max >= 1 && max <= MAX_DISTRIBUTION_BUCKETS;
+}
+
+/** 質問の区分の値（rating/number は数値、choice はラベル）。分布を出さない質問は null */
+function distributionKeys(question: Question): (number | string)[] | null {
+  switch (question.type) {
+    case 'rating': {
+      // 既定の上限 5 は回答画面（QuestionField.tsx）と同じ
+      const max = question.maxScore ?? 5;
+      return isDistributableMax(max) ? Array.from({ length: max }, (_, i) => i + 1) : null;
+    }
+    case 'number':
+      return isDistributableMax(question.maxScore)
+        ? Array.from({ length: question.maxScore + 1 }, (_, i) => i)
+        : null;
+    case 'choice':
+      return question.options && question.options.length > 0
+        ? question.options.map((o) => o.label)
+        : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * 質問ごとの分布（フォーム全体、全チーム・全回答者の合算）。
+ * rating・上限 1〜20 の number・choice の質問だけを sortOrder 順で返す。
+ * どの区分にも当てはまらない値は otherCount に数え、未回答と choice の空文字は数えない。
+ */
+export function computeQuestionDistributions(
+  responses: AggregateResponseInput[],
+  questions: Question[],
+): QuestionDistribution[] {
+  const result: QuestionDistribution[] = [];
+  for (const question of [...questions].sort((a, b) => a.sortOrder - b.sortOrder)) {
+    const keys = distributionKeys(question);
+    if (!keys) continue;
+    const counts = new Map<number | string, number>(keys.map((k) => [k, 0]));
+    let otherCount = 0;
+    for (const response of responses) {
+      const answer = response.answers.find((a) => a.questionId === question.id);
+      if (!answer || answer.value === '') continue;
+      const value = answer.value;
+      if ((typeof value === 'number' || typeof value === 'string') && counts.has(value)) {
+        counts.set(value, (counts.get(value) ?? 0) + 1);
+      } else {
+        otherCount++;
+      }
+    }
+    result.push({
+      questionId: question.id,
+      buckets: keys.map((k) => ({ label: String(k), count: counts.get(k) ?? 0 })),
+      otherCount,
+    });
+  }
+  return result;
 }

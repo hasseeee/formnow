@@ -144,12 +144,23 @@ export interface RespondentSummary {
   standardized: boolean;
 }
 
+/** 質問ごとの分布（フォーム全体） */
+export interface QuestionDistribution {
+  questionId: number;
+  /** 表示順の区分。rating は 1..上限、number は 0..上限、choice は選択肢の順 */
+  buckets: { label: string; count: number }[];
+  /** どの区分にも当てはまらない回答の件数（消えた選択肢、範囲外や小数の値） */
+  otherCount: number;
+}
+
 export interface FormSummary {
   formId: number;
   formSlug: string;
   maxPossibleScore: number;
   teams: TeamSummary[];
   respondents: RespondentSummary[];
+  /** rating・上限のある number・choice の質問だけ、質問の並び順 */
+  questionDistributions: QuestionDistribution[];
 }
 
 export interface Formula {

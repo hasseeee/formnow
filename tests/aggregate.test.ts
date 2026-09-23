@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregateTeamSummaries,
   computeRanks,
+  computeQuestionDistributions,
   computeRespondentSummaries,
   computeStandardizedTeamAverages,
   sortByRank,
@@ -347,5 +348,98 @@ describe('回答者ごとの傾向と標準化平均', () => {
       expect(result[0].avg).toBe(7.5);
       expect(result[1].zAvg).toBeCloseTo(1);
     });
+  });
+});
+
+describe('computeQuestionDistributions', () => {
+  const agree = [{ label: 'ぜひ' }, { label: 'まあ' }, { label: 'うーん' }];
+
+  function res(answers: [number, AggregateResponseInput['answers'][number]['value']][]) {
+    return { teamId: 1, answers: answers.map(([questionId, value]) => ({ questionId, value })) };
+  }
+
+  it('手計算例: rating（max 3）の範囲外は「その他」、choice の消えた選択肢は「その他」で空文字は数えない', () => {
+    const questions = [
+      makeQuestion({ id: 1, sortOrder: 1, type: 'rating', maxScore: 3 }),
+      makeQuestion({ id: 2, sortOrder: 2, type: 'choice', options: agree, maxScore: null }),
+      makeQuestion({ id: 3, sortOrder: 3, type: 'number', maxScore: null }),
+    ];
+    const responses = [
+      res([
+        [1, 3],
+        [2, 'ぜひ'],
+        [3, 100],
+      ]),
+      res([
+        [1, 3],
+        [2, 'ぜひ'],
+      ]),
+      res([
+        [1, 1],
+        [2, '消えた選択肢'],
+      ]),
+      res([
+        [1, 0],
+        [2, ''],
+      ]),
+      res([]), // その質問に答えていない回答は数えない
+    ];
+    expect(computeQuestionDistributions(responses, questions)).toEqual([
+      {
+        questionId: 1,
+        buckets: [
+          { label: '1', count: 1 },
+          { label: '2', count: 0 },
+          { label: '3', count: 2 },
+        ],
+        otherCount: 1,
+      },
+      {
+        questionId: 2,
+        buckets: [
+          { label: 'ぜひ', count: 2 },
+          { label: 'まあ', count: 0 },
+          { label: 'うーん', count: 0 },
+        ],
+        otherCount: 1,
+      },
+    ]);
+  });
+
+  it('rating の maxScore が null なら区分は 1〜5', () => {
+    const questions = [makeQuestion({ id: 1, type: 'rating', maxScore: null })];
+    const [dist] = computeQuestionDistributions([res([[1, 5]])], questions);
+    expect(dist.buckets.map((b) => b.label)).toEqual(['1', '2', '3', '4', '5']);
+    expect(dist.buckets[4].count).toBe(1);
+    expect(dist.otherCount).toBe(0);
+  });
+
+  it('number（maxScore 2）は 0 から数え、小数は「その他」', () => {
+    const questions = [makeQuestion({ id: 1, type: 'number', maxScore: 2 })];
+    const responses = [res([[1, 0]]), res([[1, 1.5]]), res([[1, 2]])];
+    expect(computeQuestionDistributions(responses, questions)).toEqual([
+      {
+        questionId: 1,
+        buckets: [
+          { label: '0', count: 1 },
+          { label: '1', count: 0 },
+          { label: '2', count: 1 },
+        ],
+        otherCount: 1,
+      },
+    ]);
+  });
+
+  it('text・checkbox の質問は含めず、質問の並び順（sortOrder）で返す', () => {
+    const questions = [
+      makeQuestion({ id: 1, sortOrder: 3, type: 'rating', maxScore: 5 }),
+      makeQuestion({ id: 2, sortOrder: 1, type: 'text', maxScore: null }),
+      makeQuestion({ id: 3, sortOrder: 2, type: 'checkbox', options: agree, maxScore: null }),
+      makeQuestion({ id: 4, sortOrder: 0, type: 'choice', options: agree, maxScore: null }),
+      makeQuestion({ id: 5, sortOrder: 4, type: 'number', maxScore: 21 }), // 上限が 20 を超える
+    ];
+    const result = computeQuestionDistributions([], questions);
+    expect(result.map((d) => d.questionId)).toEqual([4, 1]);
+    expect(result[0].otherCount).toBe(0);
   });
 });
