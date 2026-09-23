@@ -344,6 +344,95 @@ describe('集計', () => {
     expect(csv).toContain(`"'=HYPERLINK`);
     expect(csv).not.toMatch(/(^|,)=HYPERLINK/m);
   });
+
+  it('標準化平均・標準化順位と回答者ごとの傾向を返す（全部同じ点の審査員1は使わない）', async () => {
+    const summary = await client.adminJson<FormSummary>(
+      'GET',
+      `/api/admin/forms/${f.judgeForm.id}/summary`,
+    );
+    expect(summary.teams.map((t) => [t.teamName, t.zRank])).toEqual([
+      ['B班', 1],
+      ['A班', 2],
+      ['C班', null],
+    ]);
+    expect(summary.teams[0].zAvg).toBeCloseTo(1);
+    expect(summary.teams[1].zAvg).toBeCloseTo(-1);
+    expect(summary.teams[2].zAvg).toBeNull();
+    expect(
+      summary.respondents.map((r) => [r.respondentName, r.count, r.avg, r.sd, r.standardized]),
+    ).toEqual([
+      ['審査員1', 2, 23, 0, false],
+      ['審査員2', 2, 25.5, 3.5, true],
+    ]);
+    expect(summary.respondents[0].avgDiff).toBeCloseTo(-1.25);
+    expect(summary.respondents[1].avgDiff).toBeCloseTo(1.25);
+  });
+
+  it('回答1件ずつの相互評価は、全チームの標準化平均が null になる', async () => {
+    const summary = await client.adminJson<FormSummary>(
+      'GET',
+      `/api/admin/forms/${f.peerForm.id}/summary`,
+    );
+    expect(summary.teams.map((t) => [t.zAvg, t.zRank])).toEqual([
+      [null, null],
+      [null, null],
+      [null, null],
+    ]);
+    expect(summary.respondents.map((r) => [r.count, r.sd, r.standardized])).toEqual([
+      [1, null, false],
+      [1, null, false],
+    ]);
+  });
+
+  it('計算式で <slug>_zavg が使え、標準化平均がないチームは「なし」でエラーにならない', async () => {
+    await client.adminJson('PUT', `/api/admin/events/${f.eventId}/formulas`, {
+      formulas: [
+        { name: '審査員の標準化', expression: 'judge_zavg' },
+        { name: '相互評価の標準化', expression: 'peer_zavg' },
+      ],
+    });
+    const { formulas } = await client.adminJson<FormulaResults>(
+      'GET',
+      `/api/admin/events/${f.eventId}/formula-results`,
+    );
+    expect(formulas[0].error).toBeNull();
+    expect(formulas[0].ranking.map((r) => [r.teamName, r.rank])).toEqual([
+      ['B班', 1],
+      ['A班', 2],
+      ['C班', null],
+    ]);
+    expect(formulas[0].ranking[2].value).toBeNull();
+    expect(formulas[1].error).toBeNull();
+    expect(formulas[1].ranking.map((r) => r.value)).toEqual([null, null, null]);
+  });
+
+  it('MCPの get_team_summary にも回答者ごとの傾向と標準化平均が含まれる', async () => {
+    /** MCPの応答（JSON か SSE の data: 行）から JSON-RPC のメッセージを取り出す */
+    async function readMcpResult(res: Response): Promise<{
+      result: { content: { type: string; text: string }[] };
+    }> {
+      const body = await res.text();
+      const dataLine = body.split('\n').find((line) => line.startsWith('data:'));
+      return JSON.parse(dataLine ? dataLine.slice('data:'.length) : body);
+    }
+
+    const res = await client.request(
+      'POST',
+      '/mcp',
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'get_team_summary', arguments: { formId: f.judgeForm.id } },
+      },
+      { Authorization: `Bearer ${MCP_TOKEN}`, Accept: 'application/json, text/event-stream' },
+    );
+    expect(res.status).toBe(200);
+    const message = await readMcpResult(res);
+    const summary = JSON.parse(message.result.content[0].text) as FormSummary;
+    expect(summary.respondents).toHaveLength(2);
+    expect(summary.teams[0].zRank).toBe(1);
+  });
 });
 
 describe('データを消さないための約束', () => {

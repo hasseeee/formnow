@@ -828,21 +828,25 @@ export async function listResponsesForForm(
   }));
 }
 
-/** 集計計算用: フォームの全回答を {teamId, answers} の形で返す */
+/** 集計計算用: フォームの全回答を {respondentId, teamId, answers} の形で返す */
 export async function listResponsesForScoring(
   db: D1Database,
   formId: number,
-): Promise<{ teamId: number; answers: AnswerInput[] }[]> {
+): Promise<{ respondentId: number; teamId: number; answers: AnswerInput[] }[]> {
   const { results } = await db
-    .prepare('SELECT id, team_id FROM responses WHERE form_id = ?')
+    .prepare('SELECT id, respondent_id, team_id FROM responses WHERE form_id = ?')
     .bind(formId)
-    .all<{ id: number; team_id: number }>();
+    .all<{ id: number; respondent_id: number; team_id: number }>();
   const rows = results ?? [];
   const answersMap = await getAnswersByResponseIds(
     db,
     rows.map((r) => r.id),
   );
-  return rows.map((r) => ({ teamId: r.team_id, answers: answersMap.get(r.id) ?? [] }));
+  return rows.map((r) => ({
+    respondentId: r.respondent_id,
+    teamId: r.team_id,
+    answers: answersMap.get(r.id) ?? [],
+  }));
 }
 
 // ---------- formulas ----------
