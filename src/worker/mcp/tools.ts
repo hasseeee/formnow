@@ -327,7 +327,8 @@ export function registerTools(server: McpServer, env: Env): void {
   server.registerTool(
     'get_team_summary',
     {
-      description: 'フォームのチーム別集計 (回答数・平均・合計・順位・質問別平均) を取得する',
+      description:
+        'フォームのチーム別集計 (回答数・平均・合計・順位・質問別平均・標準化平均と標準化順位) と回答者ごとの傾向 (件数・平均・全体との差・ばらつき) を取得する',
       inputSchema: { formId: z.number().int() },
     },
     safe(async ({ formId }) => {
@@ -354,7 +355,7 @@ export function registerTools(server: McpServer, env: Env): void {
                 .min(1)
                 .max(500)
                 .describe(
-                  '例: judge_avg * 0.7 + peer_avg * 0.3 (変数は <form_slug>_avg / _sum / _count)',
+                  '例: judge_avg * 0.7 + peer_avg * 0.3 (変数は <form_slug>_avg / _sum / _count / _zavg (標準化平均))',
                 ),
             }),
           )

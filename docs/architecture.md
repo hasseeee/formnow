@@ -32,7 +32,7 @@ src/
     db.ts               D1へのSQL。DBの行(snake_case) → 型(camelCase) の変換もここ
     logic/              ★計算の本体。DBにもHTTPにも依存しない純関数
       scoring.ts          回答1件の点数（値 × 重み）
-      aggregate.ts        チーム別の平均・順位
+      aggregate.ts        チーム別の平均・順位、回答者ごとの傾向、標準化平均
       formula.ts          計算式のパーサー（eval は使わない）
       csv.ts / security.ts
     sheets.ts           Googleスプレッドシート連携

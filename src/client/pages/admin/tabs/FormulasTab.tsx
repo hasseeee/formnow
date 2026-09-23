@@ -64,7 +64,8 @@ export default function FormulasTab({ eventId, formulas, onSaved }: Props) {
   return (
     <div className="editable-list">
       <p className="hint-text">
-        変数: &lt;フォームslug&gt;_avg, _sum, _count。例: judge_avg * 0.7 + peer_avg * 0.3
+        変数: &lt;フォームslug&gt;_avg, _sum, _count, _zavg（標準化平均）。例: judge_avg * 0.7 +
+        peer_avg * 0.3
       </p>
       {error && <p className="form-error">{error}</p>}
       {rows.map((row, i) => (
