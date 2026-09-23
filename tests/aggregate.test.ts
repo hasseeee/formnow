@@ -18,6 +18,7 @@ function makeQuestion(overrides: Partial<Question>): Question {
     maxScore: 5,
     weight: 1,
     required: true,
+    scaleLabels: null,
     ...overrides,
   };
 }

@@ -9,6 +9,11 @@ import { CSV_BOM, stripMarkdown, toCsv } from '../logic/csv';
 import { SheetsConfigError, SheetsApiError, syncFormToSheet } from '../sheets';
 import { timingSafeEqual } from '../logic/security';
 import type { ApiError, FormulaResults } from '../../shared/types';
+import {
+  normalizeScaleLabels,
+  SCALE_LABEL_MAX_LENGTH,
+  SCALE_LABELS_MAX_STEPS,
+} from '../../shared/scaleLabels';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
 
@@ -79,6 +84,12 @@ const questionItemSchema = z.object({
   maxScore: z.number().finite().nullable(),
   weight: z.number().finite().min(0),
   required: z.boolean(),
+  // 省略・null は「説明なし」。既存のテスト用データや古い画面からの保存がそのまま通る
+  scaleLabels: z
+    .array(z.string().max(SCALE_LABEL_MAX_LENGTH))
+    .max(SCALE_LABELS_MAX_STEPS)
+    .nullable()
+    .optional(),
 });
 const questionsSchema = z.object({ questions: z.array(questionItemSchema).max(200) });
 
@@ -243,7 +254,14 @@ adminRoutes.put('/forms/:id/questions', async (c) => {
   if (!form) return c.json<ApiError>({ error: 'form not found' }, 404);
   const parsed = questionsSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json<ApiError>({ error: 'invalid request body' }, 400);
-  const questions = await db.upsertQuestions(c.env.DB, id, parsed.data.questions);
+  // 書き込む前に全件を検証する。1件でも誤りがあれば何も保存しない
+  const items: db.QuestionInput[] = [];
+  for (const [i, q] of parsed.data.questions.entries()) {
+    const labels = normalizeScaleLabels(q);
+    if (!labels.ok) return c.json<ApiError>({ error: `questions[${i}]: ${labels.error}` }, 400);
+    items.push({ ...q, scaleLabels: labels.value });
+  }
+  const questions = await db.upsertQuestions(c.env.DB, id, items);
   return c.json(questions);
 });
 

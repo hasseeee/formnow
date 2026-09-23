@@ -6,6 +6,7 @@ import type {
   FormulaResults,
   MyResponsesView,
   PublicFormView,
+  Question,
 } from '../../src/shared/types';
 import * as db from '../../src/worker/db';
 import { createTestClient, MCP_TOKEN, type TestClient } from '../helpers/app';
@@ -461,5 +462,230 @@ describe('フォームの作成', () => {
       kind: 'judge',
     });
     expect(res.status).toBe(409);
+  });
+});
+
+describe('評価の段階の説明', () => {
+  const TEN = ['  もう少し ', '', '', '', '', '', '', '', '', 'とてもよい'];
+  const TEN_TRIMMED = ['もう少し', '', '', '', '', '', '', '', '', 'とてもよい'];
+
+  /** 審査員フォームの3問を、seed と同じ内容に上書きを重ねて PUT する */
+  function putJudgeQuestions(patch: {
+    tech?: Record<string, unknown>;
+    design?: Record<string, unknown>;
+    comment?: Record<string, unknown>;
+  }) {
+    const base = (q: Question) => ({
+      id: q.id,
+      sortOrder: q.sortOrder,
+      type: q.type,
+      labelMd: q.labelMd,
+      options: q.options,
+      maxScore: q.maxScore,
+      weight: q.weight,
+      required: q.required,
+    });
+    return client.admin('PUT', `/api/admin/forms/${f.judgeForm.id}/questions`, {
+      questions: [
+        { ...base(f.jq.tech), ...patch.tech },
+        { ...base(f.jq.design), ...patch.design },
+        { ...base(f.jq.comment), ...patch.comment },
+      ],
+    });
+  }
+
+  async function adminQuestions(): Promise<Question[]> {
+    const { questions } = await client.adminJson<{ questions: Question[] }>(
+      'GET',
+      `/api/admin/forms/${f.judgeForm.id}`,
+    );
+    return questions;
+  }
+
+  /** MCPのツールを呼ぶ。ステートレスなので initialize なしで tools/call を送れる */
+  async function callTool(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
+    const res = await client.request(
+      'POST',
+      '/mcp',
+      { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } },
+      { Accept: 'application/json, text/event-stream', Authorization: `Bearer ${MCP_TOKEN}` },
+    );
+    expect(res.status).toBe(200);
+    const line = (await res.text()).split('\n').find((l) => l.startsWith('data: '));
+    if (!line) throw new Error('MCPの応答に data: 行がない');
+    return (JSON.parse(line.slice('data: '.length)) as { result: never }).result;
+  }
+
+  it('付けた説明は trim されて保存され、管理APIで往復する', async () => {
+    const res = await putJudgeQuestions({ tech: { scaleLabels: TEN } });
+    expect(res.status).toBe(200);
+    const saved = (await res.json()) as Question[];
+    expect(saved[0].scaleLabels).toEqual(TEN_TRIMMED);
+    const [tech, design, comment] = await adminQuestions();
+    expect(tech.scaleLabels).toEqual(TEN_TRIMMED);
+    expect(design.scaleLabels).toBeNull();
+    expect(comment.scaleLabels).toBeNull();
+  });
+
+  it('説明を送っていない質問は null', async () => {
+    expect(f.jq.tech.scaleLabels).toBeNull();
+    expect((await adminQuestions()).every((q) => q.scaleLabels === null)).toBe(true);
+  });
+
+  it('null で送ると説明が消える', async () => {
+    await putJudgeQuestions({ tech: { scaleLabels: TEN } });
+    expect((await putJudgeQuestions({ tech: { scaleLabels: null } })).status).toBe(200);
+    expect((await adminQuestions())[0].scaleLabels).toBeNull();
+  });
+
+  it('空文字だけの配列は null で保存される', async () => {
+    const res = await putJudgeQuestions({ tech: { scaleLabels: Array(10).fill(' ') } });
+    expect(res.status).toBe(200);
+    expect((await adminQuestions())[0].scaleLabels).toBeNull();
+  });
+
+  it('誤りがあれば400で、同じリクエストのほかの質問も含め何も保存されない', async () => {
+    const before = await adminQuestions();
+    const cases: Record<string, unknown>[] = [
+      { scaleLabels: ['a', 'b', 'c'] },
+      { maxScore: null, scaleLabels: ['a'] },
+      { maxScore: 4.5, scaleLabels: ['a', '', '', 'd'] },
+      { maxScore: 101, scaleLabels: ['a'] },
+    ];
+    for (const tech of cases) {
+      const res = await putJudgeQuestions({ tech, design: { labelMd: 'デザイン（改）' } });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toMatch(/^questions\[0\]: /);
+    }
+    expect(await adminQuestions()).toEqual(before);
+  });
+
+  it('rating 以外に説明を付けると400', async () => {
+    const res = await putJudgeQuestions({ comment: { scaleLabels: ['a'] } });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain('questions[2]');
+  });
+
+  it('41文字以上の説明、101個以上の配列は400', async () => {
+    const long = ['あ'.repeat(41), '', '', '', '', '', '', '', '', ''];
+    expect((await putJudgeQuestions({ tech: { scaleLabels: long } })).status).toBe(400);
+    const many = Array(101).fill('x');
+    expect((await putJudgeQuestions({ tech: { maxScore: 101, scaleLabels: many } })).status).toBe(
+      400,
+    );
+  });
+
+  it('回答者向けAPIとプレビューに説明が出て、重みと配点は出ない', async () => {
+    await putJudgeQuestions({ tech: { scaleLabels: TEN } });
+    const text = await (await client.request('GET', '/api/forms/judge')).text();
+    expect(text).toContain('とてもよい');
+    expect(text).not.toContain('weight');
+    expect(text).not.toContain('score"');
+    expect((JSON.parse(text) as PublicFormView).questions[0].scaleLabels).toEqual(TEN_TRIMMED);
+
+    const preview = JSON.stringify(
+      await client.adminJson('GET', `/api/admin/forms/${f.judgeForm.id}/preview`),
+    );
+    expect(preview).toContain('とてもよい');
+    expect(preview).not.toContain('weight');
+    expect(preview).not.toContain('score"');
+  });
+
+  it('説明付きの質問にも回答は数値で送る。説明の文字列は400', async () => {
+    await putJudgeQuestions({ tech: { scaleLabels: TEN } });
+    expect((await submitJudge(client, f, f.judges[0].id, f.teams.a.id, 8, 7)).status).toBe(200);
+    const res = await client.request('POST', '/api/forms/judge/responses', {
+      respondentId: f.judges[0].id,
+      teamId: f.teams.b.id,
+      answers: [
+        { questionId: f.jq.tech.id, value: 'とてもよい' },
+        { questionId: f.jq.design.id, value: 7 },
+      ],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('MCP: set_questions の入力に scaleLabels があり、使い方が説明されている', async () => {
+    const res = await client.request(
+      'POST',
+      '/mcp',
+      { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+      { Accept: 'application/json, text/event-stream', Authorization: `Bearer ${MCP_TOKEN}` },
+    );
+    const line = (await res.text()).split('\n').find((l) => l.startsWith('data: '))!;
+    const { result } = JSON.parse(line.slice('data: '.length)) as {
+      result: {
+        tools: {
+          name: string;
+          description: string;
+          inputSchema: {
+            properties: {
+              questions: { items: { properties: Record<string, { description?: string }> } };
+            };
+          };
+        }[];
+      };
+    };
+    const tool = result.tools.find((t) => t.name === 'set_questions')!;
+    expect(tool.description).toContain('scaleLabels');
+    // 質問以外のツールには付けない
+    for (const name of ['set_teams', 'set_formulas']) {
+      expect(result.tools.find((t) => t.name === name)!.description).not.toContain('scaleLabels');
+    }
+    const desc = tool.inputSchema.properties.questions.items.properties.scaleLabels.description;
+    expect(desc).toContain('1点目から順に maxScore 個');
+    expect(desc).toContain('空文字');
+    expect(desc).toContain('省略またはnullで説明なし');
+    expect(desc).toContain('get_form の値をそのまま渡す');
+  });
+
+  it('MCP: set_questions で付けた説明が get_form に出る', async () => {
+    const set = await callTool('set_questions', {
+      formId: f.peerForm.id,
+      questions: [
+        {
+          id: f.pq.like.id,
+          type: 'rating',
+          labelMd: 'よかった度',
+          maxScore: 5,
+          scaleLabels: [' もう少し', '', '', '', 'とてもよい'],
+        },
+      ],
+    });
+    expect(set.isError).toBeFalsy();
+    const got = await callTool('get_form', { formId: f.peerForm.id });
+    const { questions } = JSON.parse(got.content[0].text) as { questions: Question[] };
+    expect(questions.find((q) => q.id === f.pq.like.id)!.scaleLabels).toEqual([
+      'もう少し',
+      '',
+      '',
+      '',
+      'とてもよい',
+    ]);
+  });
+
+  it('MCP: 誤りは isError で何件目かと理由が返り、何も保存されない', async () => {
+    const before = await db.listQuestions(client.env.DB, f.peerForm.id);
+    const res = await callTool('set_questions', {
+      formId: f.peerForm.id,
+      questions: [
+        { id: f.pq.like.id, type: 'rating', labelMd: 'よかった度（改）', maxScore: 5 },
+        {
+          id: f.pq.again.id,
+          type: 'rating',
+          labelMd: 'また聞きたい?',
+          maxScore: 5,
+          scaleLabels: ['a', 'b'],
+        },
+      ],
+    });
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toBe(
+      '2件目の質問: scaleLabels の数（2）が maxScore（5）と一致しません',
+    );
+    expect(await db.listQuestions(client.env.DB, f.peerForm.id)).toEqual(before);
   });
 });

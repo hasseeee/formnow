@@ -60,6 +60,7 @@ interface QuestionRow {
   max_score: number | null;
   weight: number;
   required: number;
+  scale_labels_json: string | null;
 }
 
 interface FormulaRow {
@@ -115,6 +116,7 @@ function mapQuestion(row: QuestionRow): Question {
     maxScore: row.max_score,
     weight: row.weight,
     required: row.required === 1,
+    scaleLabels: row.scale_labels_json ? (JSON.parse(row.scale_labels_json) as string[]) : null,
   };
 }
 
@@ -594,6 +596,8 @@ export interface QuestionInput {
   maxScore: number | null;
   weight: number;
   required: boolean;
+  /** 検証・正規化は受け口（admin.ts / mcp/tools.ts）で normalizeScaleLabels を通してから渡す */
+  scaleLabels?: string[] | null;
 }
 
 export async function listQuestions(db: D1Database, formId: number): Promise<Question[]> {
@@ -615,7 +619,16 @@ export async function upsertQuestions(
     'form_id',
     formId,
     items,
-    ['sort_order', 'type', 'label_md', 'options_json', 'max_score', 'weight', 'required'],
+    [
+      'sort_order',
+      'type',
+      'label_md',
+      'options_json',
+      'max_score',
+      'weight',
+      'required',
+      'scale_labels_json',
+    ],
     (i) => [
       i.sortOrder,
       i.type,
@@ -624,6 +637,7 @@ export async function upsertQuestions(
       i.maxScore,
       i.weight,
       i.required ? 1 : 0,
+      i.scaleLabels ? JSON.stringify(i.scaleLabels) : null,
     ],
   );
   return listQuestions(db, formId);
@@ -659,7 +673,16 @@ export async function mergeQuestions(
     'form_id',
     formId,
     plan,
-    ['sort_order', 'type', 'label_md', 'options_json', 'max_score', 'weight', 'required'],
+    [
+      'sort_order',
+      'type',
+      'label_md',
+      'options_json',
+      'max_score',
+      'weight',
+      'required',
+      'scale_labels_json',
+    ],
     (i) => [
       i.sortOrder,
       i.type,
@@ -668,6 +691,7 @@ export async function mergeQuestions(
       i.maxScore,
       i.weight,
       i.required ? 1 : 0,
+      i.scaleLabels ? JSON.stringify(i.scaleLabels) : null,
     ],
   );
   return listQuestions(db, formId);

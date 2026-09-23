@@ -1,7 +1,11 @@
 // テスト用のD1互換アダプタ。Node組み込みのSQLite（インメモリ）の上に、
 // このアプリが使うD1のAPI（prepare/bind/first/all/run/batch）だけを実装する。
 import { DatabaseSync } from 'node:sqlite';
-import schema from '../../migrations/0001_init.sql?raw';
+import init from '../../migrations/0001_init.sql?raw';
+import scaleLabels from '../../migrations/0002_question_scale_labels.sql?raw';
+
+/** 本番と同じく、マイグレーションを番号順にすべて流す */
+const migrations = [init, scaleLabels];
 
 type Param = string | number | null;
 
@@ -76,6 +80,6 @@ class FakeD1 {
 export function createTestDb(): D1Database {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON');
-  db.exec(schema);
+  for (const sql of migrations) db.exec(sql);
   return new FakeD1(db) as unknown as D1Database;
 }

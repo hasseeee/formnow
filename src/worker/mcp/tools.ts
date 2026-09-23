@@ -8,6 +8,11 @@ import * as db from '../db';
 import { computeFormSummary, computeFormulaResults } from '../services';
 import { responseScore } from '../logic/scoring';
 import { syncFormToSheet, SheetsConfigError, SheetsApiError } from '../sheets';
+import {
+  normalizeScaleLabels,
+  SCALE_LABEL_MAX_LENGTH,
+  SCALE_LABELS_MAX_STEPS,
+} from '../../shared/scaleLabels';
 
 // ---------- ヘルパー ----------
 
@@ -236,7 +241,7 @@ export function registerTools(server: McpServer, env: Env): void {
     'set_questions',
     {
       description:
-        'フォームの質問一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目はlabelMdが完全一致する既存質問があれば更新、無ければ追加する。既存項目は削除されません。',
+        'フォームの質問一覧を追加・更新する (削除しないマージ方式)。idを指定した項目は更新、id無しの項目はlabelMdが完全一致する既存質問があれば更新、無ければ追加する。既存項目は削除されません。rating には scaleLabels で段階ごとの説明を付けられる（回答者に表示される）。',
       inputSchema: {
         formId: z.number().int(),
         questions: z
@@ -250,6 +255,17 @@ export function registerTools(server: McpServer, env: Env): void {
               maxScore: z.number().finite().nullable().optional(),
               weight: z.number().finite().min(0).optional(),
               required: z.boolean().optional(),
+              scaleLabels: z
+                .array(z.string().max(SCALE_LABEL_MAX_LENGTH))
+                .max(SCALE_LABELS_MAX_STEPS)
+                .nullable()
+                .optional()
+                .describe(
+                  '評価（rating）の各段階の説明。1点目から順に maxScore 個並べる。説明を付けない段階は空文字。' +
+                    '例: maxScore=5 で両端だけなら ["もう少し","","","","とてもよい"]。' +
+                    'maxScore は1〜100の整数が必要。省略またはnullで説明なし。' +
+                    'scaleLabels を省略すると既存の説明は消えるので、説明を保ちたいときは get_form の値をそのまま渡す',
+                ),
             }),
           )
           .max(200),
@@ -258,16 +274,23 @@ export function registerTools(server: McpServer, env: Env): void {
     safe(async ({ formId, questions }) => {
       const form = await db.getFormById(database, formId);
       if (!form) throw new Error('フォームが見つかりません');
-      const items = questions.map((q, i) => ({
-        id: q.id,
-        sortOrder: q.sortOrder ?? i,
-        type: q.type,
-        labelMd: q.labelMd,
-        options: q.options ?? null,
-        maxScore: q.maxScore ?? null,
-        weight: q.weight ?? 1,
-        required: q.required ?? true,
-      }));
+      // 書き込む前に全件を検証する。1件でも誤りがあれば何も保存しない
+      const items = questions.map((q, i) => {
+        const maxScore = q.maxScore ?? null;
+        const labels = normalizeScaleLabels({ type: q.type, maxScore, scaleLabels: q.scaleLabels });
+        if (!labels.ok) throw new Error(`${i + 1}件目の質問: ${labels.error}`);
+        return {
+          id: q.id,
+          sortOrder: q.sortOrder ?? i,
+          type: q.type,
+          labelMd: q.labelMd,
+          options: q.options ?? null,
+          maxScore,
+          weight: q.weight ?? 1,
+          required: q.required ?? true,
+          scaleLabels: labels.value,
+        };
+      });
       return jsonResult(await db.mergeQuestions(database, formId, items));
     }),
   );
