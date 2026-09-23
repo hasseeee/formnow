@@ -603,6 +603,23 @@ label {
   font-size: 1.05rem;
 }
 
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 閲覧専用トークンでログインしているときの目印 */
+.role-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  white-space: nowrap;
+}
+
 .admin-main {
   max-width: 900px;
   margin: 0 auto;
