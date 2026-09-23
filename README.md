@@ -29,7 +29,7 @@ Node.js 22 以上が必要です。
 git clone git@github.com:hasseeee/formnow.git
 cd formnow
 npm ci
-printf 'ADMIN_TOKEN=dev-admin-token\nMCP_TOKEN=dev-mcp-token\n' > .dev.vars
+printf 'ADMIN_TOKEN=dev-admin-token\nMCP_TOKEN=dev-mcp-token\nVIEWER_TOKEN=dev-viewer-token\n' > .dev.vars
 npm run db:migrate:local
 npm run dev
 ```
@@ -49,6 +49,7 @@ http://localhost:5173/admin を開き、`dev-admin-token` でログインしま�
 2. 「＋ 審査員フォーム」か「＋ 相互評価フォーム」を押す。エディタが開くので質問を足す（自動保存）
 3. 「プレビュー」で回答画面を確認し、「公開中」に切り替えて「共有」でURLを配る
 4. エディタの「回答」タブで順位と個別回答を見る。イベントページの「横断集計と計算式」で最終順位を定義する
+5. 当日の司会・集計係には閲覧用トークン（`VIEWER_TOKEN`）を渡すと、回答と集計を見るだけでき、変更はできません
 
 ## Claude から操作する（MCP）
 

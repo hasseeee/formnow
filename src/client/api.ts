@@ -3,6 +3,7 @@
 // Authorization: Bearer <adminToken> を付与し、401時はリスナーに通知する。
 
 import type {
+  AdminMe,
   AnswerValue,
   Event,
   Form,
@@ -224,6 +225,11 @@ export interface SyncSheetsResult {
 }
 
 // ---------- 管理API ----------
+
+/** ログイン中のトークンの役割（管理者 / 閲覧専用）を取得する */
+export function getAdminMe(): Promise<AdminMe> {
+  return request<AdminMe>('/api/admin/me', { admin: true });
+}
 
 export function listEvents(): Promise<Event[]> {
   return request<Event[]>('/api/admin/events', { admin: true });

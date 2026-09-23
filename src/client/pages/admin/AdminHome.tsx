@@ -4,9 +4,11 @@ import type { Event } from '../../../shared/types';
 import { ApiRequestError, createEvent, deleteEvent, listEvents } from '../../api';
 import KebabMenu from '../../components/KebabMenu';
 import { useToast } from '../../components/Toast';
+import { useAdminRole } from './adminRole';
 
 export default function AdminHome() {
   const toast = useToast();
+  const readOnly = useAdminRole() === 'viewer';
   const [events, setEvents] = useState<Event[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -58,18 +60,20 @@ export default function AdminHome() {
     <div className="admin-page">
       <h1>イベント一覧</h1>
       {error && <p className="form-error">{error}</p>}
-      <form className="card inline-form" onSubmit={handleCreate}>
-        <input
-          type="text"
-          className="text-input"
-          placeholder="新しいイベント名"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <button type="submit" className="btn btn-primary" disabled={creating || !name.trim()}>
-          {creating ? '作成中…' : 'イベントを作成'}
-        </button>
-      </form>
+      {!readOnly && (
+        <form className="card inline-form" onSubmit={handleCreate}>
+          <input
+            type="text"
+            className="text-input"
+            placeholder="新しいイベント名"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary" disabled={creating || !name.trim()}>
+            {creating ? '作成中…' : 'イベントを作成'}
+          </button>
+        </form>
+      )}
 
       {events === null && !error && <p className="muted">読み込み中…</p>}
       {events && events.length === 0 && <p className="muted">イベントがまだありません。</p>}
@@ -78,9 +82,11 @@ export default function AdminHome() {
           {events.map((ev) => (
             <li key={ev.id} className="card event-list-item">
               <Link to={`/admin/events/${ev.id}`}>{ev.name}</Link>
-              <KebabMenu
-                items={[{ label: '削除', onClick: () => handleDelete(ev), danger: true }]}
-              />
+              {!readOnly && (
+                <KebabMenu
+                  items={[{ label: '削除', onClick: () => handleDelete(ev), danger: true }]}
+                />
+              )}
             </li>
           ))}
         </ul>

@@ -14,6 +14,7 @@ import { useToast } from '../../components/Toast';
 import QuestionsPanel, { type LocalQuestion } from './editor/QuestionsPanel';
 import ResponsesPanel from './editor/ResponsesPanel';
 import SettingsPopover from './editor/SettingsPopover';
+import { useAdminRole } from './adminRole';
 
 const STATUS_OPTIONS: { value: FormStatus; label: string }[] = [
   { value: 'draft', label: '下書き' },
@@ -36,7 +37,9 @@ export default function FormEditPage() {
   const formId = Number(id);
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'responses' ? 'responses' : 'questions';
+  // 閲覧専用のときは質問タブを出さず、URL に関係なく常に回答タブを表示する
+  const readOnly = useAdminRole() === 'viewer';
+  const activeTab = readOnly || searchParams.get('tab') === 'responses' ? 'responses' : 'questions';
 
   const [data, setData] = useState<FormDetailView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -309,20 +312,28 @@ export default function FormEditPage() {
           ← イベントに戻る
         </Link>
         <div className="editor-header-actions">
-          <SaveStatusIndicator status={saveStatus} onRetry={handleRetry} />
-          <div className="status-segment" role="group" aria-label="公開状態">
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`status-segment-btn${data.form.status === opt.value ? ' active' : ''}`}
-                onClick={() => handleStatusChange(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <SettingsPopover form={data.form} onUpdated={handleFormUpdated} />
+          {readOnly ? (
+            <span className={`status-badge status-${data.form.status}`}>
+              {STATUS_OPTIONS.find((opt) => opt.value === data.form.status)?.label}
+            </span>
+          ) : (
+            <>
+              <SaveStatusIndicator status={saveStatus} onRetry={handleRetry} />
+              <div className="status-segment" role="group" aria-label="公開状態">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`status-segment-btn${data.form.status === opt.value ? ' active' : ''}`}
+                    onClick={() => handleStatusChange(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <SettingsPopover form={data.form} onUpdated={handleFormUpdated} />
+            </>
+          )}
           <a
             href={`/admin/forms/${data.form.id}/preview`}
             target="_blank"
@@ -336,26 +347,31 @@ export default function FormEditPage() {
           </button>
         </div>
       </div>
-      {data.form.status !== 'open' && (
+      {!readOnly && data.form.status !== 'open' && (
         <p className="small-hint editor-share-hint">公開すると回答できます</p>
       )}
 
-      <nav className="tab-nav editor-tab-nav">
-        <button
-          type="button"
-          className={`tab-button${activeTab === 'questions' ? ' active' : ''}`}
-          onClick={() => setSearchParams({}, { replace: true })}
-        >
-          質問
-        </button>
-        <button
-          type="button"
-          className={`tab-button${activeTab === 'responses' ? ' active' : ''}`}
-          onClick={() => setSearchParams({ tab: 'responses' }, { replace: true })}
-        >
-          回答
-        </button>
-      </nav>
+      {readOnly ? (
+        // 質問タブを出さない代わりに、フォームのタイトルをここに出す
+        <h1>{data.form.title}</h1>
+      ) : (
+        <nav className="tab-nav editor-tab-nav">
+          <button
+            type="button"
+            className={`tab-button${activeTab === 'questions' ? ' active' : ''}`}
+            onClick={() => setSearchParams({}, { replace: true })}
+          >
+            質問
+          </button>
+          <button
+            type="button"
+            className={`tab-button${activeTab === 'responses' ? ' active' : ''}`}
+            onClick={() => setSearchParams({ tab: 'responses' }, { replace: true })}
+          >
+            回答
+          </button>
+        </nav>
+      )}
 
       <div className="tab-panel">
         {activeTab === 'questions' ? (
@@ -374,7 +390,7 @@ export default function FormEditPage() {
             onMoveQuestion={handleMoveQuestion}
           />
         ) : (
-          <ResponsesPanel formId={formId} questions={data.questions} />
+          <ResponsesPanel formId={formId} questions={data.questions} readOnly={readOnly} />
         )}
       </div>
     </div>

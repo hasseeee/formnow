@@ -18,9 +18,11 @@ const SCORABLE_TYPES = new Set(['rating', 'number', 'choice', 'checkbox']);
 interface Props {
   formId: number;
   questions: Question[];
+  /** 閲覧専用のとき true。「シートへ一括同期」を隠す */
+  readOnly?: boolean;
 }
 
-export default function ResponsesPanel({ formId, questions }: Props) {
+export default function ResponsesPanel({ formId, questions, readOnly = false }: Props) {
   const toast = useToast();
   const [summary, setSummary] = useState<FormSummary | null>(null);
   const [responses, setResponses] = useState<FormResponsesView | null>(null);
@@ -91,9 +93,16 @@ export default function ResponsesPanel({ formId, questions }: Props) {
         <button type="button" className="btn btn-secondary" onClick={handleExport}>
           CSVダウンロード
         </button>
-        <button type="button" className="btn btn-secondary" onClick={handleSync} disabled={syncing}>
-          {syncing ? '同期中…' : 'シートへ一括同期'}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            {syncing ? '同期中…' : 'シートへ一括同期'}
+          </button>
+        )}
       </div>
       {syncMessage && <p className="muted">{syncMessage}</p>}
 

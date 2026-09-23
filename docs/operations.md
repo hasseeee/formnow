@@ -8,7 +8,7 @@
 |---|---|
 | アプリ本体（画面・API・MCP） | Cloudflare Workers `formnow` |
 | データベース | Cloudflare D1 `formnow`（APAC） |
-| シークレット | Workers のシークレット（`ADMIN_TOKEN` / `MCP_TOKEN` / `GOOGLE_SERVICE_ACCOUNT_JSON`） |
+| シークレット | Workers のシークレット（`ADMIN_TOKEN` / `MCP_TOKEN` / `VIEWER_TOKEN`（任意） / `GOOGLE_SERVICE_ACCOUNT_JSON`） |
 | ソースコード | このリポジトリの `main` |
 
 **正のデータはD1です。** Googleスプレッドシートは同期先にすぎず、壊れても「一括同期」で作り直せます。
@@ -21,6 +21,7 @@ npx wrangler d1 create formnow          # 出力された database_id を wrangl
 npm run db:migrate:remote
 npx wrangler secret put ADMIN_TOKEN     # 管理画面の合言葉。20文字以上のランダムな文字列を推奨
 npx wrangler secret put MCP_TOKEN       # ClaudeからMCPで操作するときの合言葉
+npx wrangler secret put VIEWER_TOKEN    # 任意。回答と集計を見るだけの合言葉。ADMIN_TOKEN とは別の値にする
 npm run deploy
 ```
 
@@ -83,6 +84,7 @@ npx wrangler secret put ADMIN_TOKEN
 
 実行するとすぐ有効になります（再デプロイ不要）。変更すると、前のトークンでログインしていた人は入り直しになります。
 管理トークンを知っている人がサークルを離れたら、変更してください。
+閲覧用トークンを配った人が抜けたら `VIEWER_TOKEN` だけ変えればよい（管理者は入り直し不要）。
 
 ## Googleスプレッドシート連携の初期設定（初回のみ・約15分）
 
@@ -118,6 +120,7 @@ npx wrangler tail formnow
 
 - [ ] 開始前にバックアップ
 - [ ] フォームを「公開中」にして、回答URLを共有（QRコードにしておくと楽）
+- [ ] 司会・集計係には `ADMIN_TOKEN` ではなく閲覧用トークン（`VIEWER_TOKEN`）を渡す
 - [ ] 受付中は、チーム・回答者・質問を**削除しない**（回答が消えます）。名前の修正は安全です
 - [ ] 終了したらフォームを「締切」にする
 - [ ] 終了直後にバックアップ
@@ -128,6 +131,8 @@ npx wrangler tail formnow
 | 症状 | 確認すること |
 |---|---|
 | 管理画面に入れない（401） | トークンの打ち間違い。シークレットを変更していないか |
+| 管理トークンで入ったのに「閲覧専用」と出る | `VIEWER_TOKEN` が `ADMIN_TOKEN` と同じ値。別の値に設定し直す |
+| 閲覧専用で「変更できません」と出る | 仕様。変更は管理トークンで |
 | 回答画面が「見つかりません」 | フォームが「下書き」のままになっていないか |
 | 回答者の名前が選択肢に出ない | 役割が合っているか（審査員フォームには審査員だけ、相互評価にはメンバーだけが出ます） |
 | スプレッドシートに追記されない | シートをサービスアカウントに「編集者」で共有したか。シートIDが正しいか。回答自体はD1に保存されているので、あとから「一括同期」で復旧できます |

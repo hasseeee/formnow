@@ -151,3 +151,11 @@ export interface FormulaResults {
 export interface ApiError {
   error: string;
 }
+
+// ---------- 管理画面の権限 ----------
+
+export type AdminRole = 'admin' | 'viewer';
+
+export interface AdminMe {
+  role: AdminRole;
+}

@@ -6,9 +6,11 @@ import { formatScore } from '../../lib/format';
 interface Props {
   eventId: number;
   refreshKey?: number;
+  /** 閲覧専用のとき true。計算式の追加を促す文を出さない */
+  readOnly?: boolean;
 }
 
-export default function FormulaResultsPanel({ eventId, refreshKey }: Props) {
+export default function FormulaResultsPanel({ eventId, refreshKey, readOnly = false }: Props) {
   const [data, setData] = useState<FormulaResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +27,13 @@ export default function FormulaResultsPanel({ eventId, refreshKey }: Props) {
   if (error) return <p className="form-error">{error}</p>;
   if (!data) return <p className="muted">読み込み中…</p>;
   if (data.formulas.length === 0) {
-    return <p className="muted">計算式が登録されていません。「計算式」タブから追加できます。</p>;
+    return (
+      <p className="muted">
+        {readOnly
+          ? '計算式が登録されていません。'
+          : '計算式が登録されていません。「計算式」タブから追加できます。'}
+      </p>
+    );
   }
 
   return (
