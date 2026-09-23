@@ -16,7 +16,8 @@ export default function AdminTokenGate() {
   const [input, setInput] = useState('');
   // 役割はどのトークンで取得したかと組にして持つ（入り直したときに古い役割を使わないため）
   const [me, setMe] = useState<{ token: string; role: AdminRole } | null>(null);
-  const [meError, setMeError] = useState<{ token: string; message: string } | null>(null);
+  // 役割の取得に失敗したときのトークン（同じトークンのあいだだけエラーを出す）
+  const [meFailedToken, setMeFailedToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,10 +38,8 @@ export default function AdminTokenGate() {
       .catch((err: unknown) => {
         if (cancelled) return;
         if (err instanceof ApiRequestError && err.status === 401) return;
-        setMeError({
-          token,
-          message: err instanceof ApiRequestError ? err.message : '読み込みに失敗しました。',
-        });
+        // サーバーの英語メッセージは出さず、利用者向けの日本語にそろえる
+        setMeFailedToken(token);
       });
     return () => {
       cancelled = true;
@@ -48,7 +47,10 @@ export default function AdminTokenGate() {
   }, [token]);
 
   const role = me && me.token === token ? me.role : null;
-  const roleError = meError && meError.token === token ? meError.message : null;
+  const roleError =
+    meFailedToken !== null && meFailedToken === token
+      ? '役割の取得に失敗しました。ページを再読み込みしてください。'
+      : null;
 
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();

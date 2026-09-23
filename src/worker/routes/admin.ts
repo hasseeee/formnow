@@ -1,6 +1,7 @@
-// 管理API (/api/admin/*) — Authorization: Bearer <ADMIN_TOKEN> 必須。
+// 管理API (/api/admin/*) — Authorization: Bearer <ADMIN_TOKEN> 必須。GET/HEAD だけなら <VIEWER_TOKEN>（閲覧専用）でも可。
 import { Hono } from 'hono';
 import { z } from 'zod';
+import type { AdminMe, AdminRole } from '../../shared/types';
 import type { Env } from '../env';
 import * as db from '../db';
 import { buildPublicFormView, computeFormSummary, computeFormulaResults } from '../services';
@@ -8,7 +9,7 @@ import { responseScore } from '../logic/scoring';
 import { CSV_BOM, stripMarkdown, toCsv } from '../logic/csv';
 import { SheetsConfigError, SheetsApiError, syncFormToSheet } from '../sheets';
 import { timingSafeEqual } from '../logic/security';
-import type { AdminMe, AdminRole, ApiError, FormulaResults } from '../../shared/types';
+import type { ApiError, FormulaResults } from '../../shared/types';
 
 export const adminRoutes = new Hono<{ Bindings: Env; Variables: { role: AdminRole } }>();
 

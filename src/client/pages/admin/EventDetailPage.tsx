@@ -70,7 +70,7 @@ export default function EventDetailPage() {
           </div>
         )}
         {readOnly ? (
-          <FormulaResultsPanel eventId={eventId} refreshKey={refreshKey} />
+          <FormulaResultsPanel eventId={eventId} refreshKey={refreshKey} readOnly />
         ) : (
           <div className="subsection">
             <h3>横断集計</h3>
